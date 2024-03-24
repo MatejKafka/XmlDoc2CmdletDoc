@@ -6,6 +6,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="System.Management.Automation" Version="7.4.1" />
     <ProjectReference Include="..\XmlDoc2CmdletDoc.Core\XmlDoc2CmdletDoc.Core.csproj" />
   </ItemGroup>
   <ItemGroup>

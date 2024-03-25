@@ -138,38 +138,17 @@ namespace XmlDoc2CmdletDoc.Core
         /// </summary>
         /// <param name="options">The options.</param>
         /// <returns>The assembly indicated in the <paramref name="options"/>.</returns>
-        private Assembly LoadAssembly(Options options)
-        {
-            var assemblyPath = options.AssemblyPath;
-            if (!File.Exists(assemblyPath))
-            {
-                throw new EngineException(EngineExitCode.AssemblyNotFound,
-                                          "Assembly file not found: " + assemblyPath);
+        private Assembly LoadAssembly(Options options) {
+            if (!File.Exists(options.AssemblyPath)) {
+                throw new EngineException(EngineExitCode.AssemblyNotFound, "Assembly file not found: " + options.AssemblyPath);
             }
-            try
-            {
-                var assemblyDir = Path.GetDirectoryName(assemblyPath) ?? "";
-                AppDomain.CurrentDomain.AssemblyResolve += // TODO: Really ought to track this handler and cleanly remove it.
-                    (sender, args) =>
-                    {
-                        var name = args.Name;
-                        var i = name.IndexOf(',');
-                        if (i != -1)
-                        {
-                            name = name.Substring(0, i);
-                        }
-                        name += ".dll";
-                        var path = Path.Combine(assemblyDir, name);
-                        return Assembly.LoadFrom(path);
-                    };
 
-                return Assembly.LoadFile(assemblyPath);
-            }
-            catch (Exception exception)
-            {
-                throw new EngineException(EngineExitCode.AssemblyLoadError,
-                                          "Failed to load assembly from file: " + assemblyPath,
-                                          exception);
+            try {
+                // TODO: this should be disposed when we're done using the assembly
+                var loader = new AssemblyDependencyResolver(options.AssemblyPath);
+                return loader.Assembly;
+            } catch (Exception exception) {
+                throw new EngineException(EngineExitCode.AssemblyLoadError, "Failed to load assembly from file: " + options.AssemblyPath, exception);
             }
         }
 

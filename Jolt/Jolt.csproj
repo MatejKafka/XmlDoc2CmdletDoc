@@ -9,11 +9,9 @@
     <AssemblyName>Jolt</AssemblyName>
 
     <OutputType>Library</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <LangVersion>default</LangVersion>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

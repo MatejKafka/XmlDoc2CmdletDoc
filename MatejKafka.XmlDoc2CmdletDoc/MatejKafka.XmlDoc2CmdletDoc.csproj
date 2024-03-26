@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <!-- I would like to use single file publish, but PowerShell (even the hosted variant we use)
+         does not support it and crashes on load -->
+    <PublishSingleFile>false</PublishSingleFile>
+
+    <ProjectGuid>a2ea1eb0-60cb-481d-888d-b738eddc98f3</ProjectGuid>
+    <AssemblyTitle>XmlDoc2CmdletDoc</AssemblyTitle>
+    <RootNamespace>XmlDoc2CmdletDoc</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MatejKafka.XmlDoc2CmdletDoc.Core\MatejKafka.XmlDoc2CmdletDoc.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Management.Automation" Version="7.4.1"/>
+  </ItemGroup>
+
+  <!-- Pack settings -->
+  <PropertyGroup>
+    <NoPackageAnalysis>true</NoPackageAnalysis>
+    <NuspecFile>MatejKafka.XmlDoc2CmdletDoc.nuspec</NuspecFile>
+    <IntermediatePackDir>$(MSBuildProjectDirectory)/bin/$(Configuration)/publish/</IntermediatePackDir>
+    <PublishDir>$(IntermediatePackDir)$(TargetFramework)/</PublishDir>
+    <NuspecProperties>Version=$(Version);PublishDir=$([MSBuild]::NormalizeDirectory($(IntermediatePackDir)))</NuspecProperties>
+  </PropertyGroup>
+
+  <!-- Executes /t:Publish for all target frameworks before packing-->
+  <Target Name="PublishAll" BeforeTargets="GenerateNuspec">
+    <ItemGroup>
+      <_TargetFramework Include="$(TargetFrameworks) $(TargetFramework)"/>
+    </ItemGroup>
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Publish" Properties="TargetFramework=%(_TargetFramework.Identity)"/>
+  </Target>
+</Project>

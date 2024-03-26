@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <ProjectGuid>8f997709-e41a-4dc8-87a4-7fcc90279969</ProjectGuid>
+    <AssemblyTitle>XmlDoc2CmdletDoc.Core</AssemblyTitle>
+    <RootNamespace>XmlDoc2CmdletDoc.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Jolt\Jolt.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="9.0.0-preview.2.24128.5" />
+    <PackageReference Include="PowerShellStandard.Library" Version="7.0.0-preview.1"/>
+  </ItemGroup>
+</Project>

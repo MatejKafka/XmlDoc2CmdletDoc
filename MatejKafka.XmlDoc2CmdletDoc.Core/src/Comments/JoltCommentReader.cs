@@ -6,7 +6,7 @@ using Jolt;
 namespace XmlDoc2CmdletDoc.Core.Comments
 {
     /// <summary>
-    /// Implementation of <see cref="T:XmlDoc2CmdletDoc.Core.Comments.ICommentReader" /> that's based on an instance
+    /// Implementation of <see cref="T:MatejKafka.XmlDoc2CmdletDoc.Core.Comments.ICommentReader" /> that's based on an instance
     /// of <see cref="T:Jolt.XmlDocCommentReader" /> from the Jolt.Net library.
     /// </summary>
     public class JoltCommentReader : ICommentReader

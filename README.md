@@ -25,18 +25,22 @@ Alternatively, paste the following snippet into your .csproj file:
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.4.0">
+    <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.4.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 ```
 
-Optionally, you can enable strict mode to cause a build error if any of your cmdlets are missing required documentation elements. To do so, add the following property to an appropriate `PropertyGroup` element in your project file:
+Optionally, you can pass extra arguments by adding the following property to a `<PropertyGroup>`:
 
 ```xml
-<XmlDoc2CmdletDocStrict>true</XmlDoc2CmdletDocStrict>
+<XmlDoc2CmdletDocArguments>-strict -ignoreMissing -excludeParameterSets parameterSetToExclude1,parameterSetToExclude2</XmlDoc2CmdletDocArguments>
 ```
+
+- `-strict`: Fail the build if any cmdlet is missing a part of the documentation.
+- `-ignoreMissing`: Do not print a list of all cmdlets with missing docstrings.
+- `-excludeParameterSets`: A comma-separated list of parameters sets to exclude from the documentation.
 
 ## Examples
 

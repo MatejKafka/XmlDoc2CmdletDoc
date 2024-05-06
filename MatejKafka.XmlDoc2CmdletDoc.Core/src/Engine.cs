@@ -47,7 +47,9 @@ namespace XmlDoc2CmdletDoc.Core
             try
             {
                 var warnings = new List<Tuple<MemberInfo, string>>();
-                ReportWarning reportWarning = (target, warningText) => warnings.Add(Tuple.Create(target, warningText));
+                ReportWarning reportWarning = options.IgnoreMissingDocs
+                        ? (_, _) => {}
+                        : (target, warningText) => warnings.Add(Tuple.Create(target, warningText));
 
                 var assembly = LoadAssembly(options);
                 var commentReader = LoadComments(options, reportWarning);

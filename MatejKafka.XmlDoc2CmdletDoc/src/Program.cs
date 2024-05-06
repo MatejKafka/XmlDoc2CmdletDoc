@@ -12,29 +12,35 @@ namespace XmlDoc2CmdletDoc
             var options = ParseArguments(args);
             Console.WriteLine(options);
             var engine = new Engine();
+
             var exitCode = engine.GenerateHelp(options);
-            Console.WriteLine("GenerateHelp completed with exit code '{0}'", exitCode);
+            if (exitCode != 0)
+            {
+                Console.WriteLine("GenerateHelp completed with exit code '{0}'", exitCode);
+            }
             Environment.Exit((int)exitCode);
         }
 
         private static Options ParseArguments(IReadOnlyList<string> args)
         {
-            const string strictSwitch = "-strict";
-            const string excludeParameterSetSwitch = "-excludeParameterSets";
-
             try
             {
                 var treatWarningsAsErrors = false;
+                var ignoreMissingDocs = false;
                 var excludedParameterSets = new List<string>();
                 string assemblyPath = null;
 
                 for (var i = 0; i < args.Count; i++)
                 {
-                    if (args[i] == strictSwitch)
+                    if (args[i] == "-strict")
                     {
                         treatWarningsAsErrors = true;
                     }
-                    else if (args[i] == excludeParameterSetSwitch)
+                    else if (args[i] == "-ignoreMissing")
+                    {
+                        ignoreMissingDocs = true;
+                    }
+                    else if (args[i] == "-excludeParameterSets")
                     {
                         i++;
                         if (i >= args.Count) throw new ArgumentException();
@@ -55,11 +61,11 @@ namespace XmlDoc2CmdletDoc
                     throw new ArgumentException();
                 }
 
-                return new Options(treatWarningsAsErrors, assemblyPath, excludedParameterSets.Contains);
+                return new Options(assemblyPath, treatWarningsAsErrors, ignoreMissingDocs, excludedParameterSets.Contains);
             }
             catch (ArgumentException)
             {
-                Console.Error.WriteLine($"Usage: XmlDoc2CmdletDoc.exe [{strictSwitch}] [{excludeParameterSetSwitch} parameterSetToExclude1,parameterSetToExclude2] assemblyPath");
+                Console.Error.WriteLine("Usage: XmlDoc2CmdletDoc.exe [-strict] [-ignoreMissing] [-excludeParameterSets parameterSetToExclude1,parameterSetToExclude2] assemblyPath");
                 Environment.Exit(-1);
                 throw;
             }

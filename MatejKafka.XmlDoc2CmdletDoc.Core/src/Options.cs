@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 
 namespace XmlDoc2CmdletDoc.Core
@@ -25,9 +24,14 @@ namespace XmlDoc2CmdletDoc.Core
         public readonly string DocCommentsPath;
 
         /// <summary>
-        /// Indicates whether or not the presence of warnings should be treated as a failure condition.
+        /// Indicates whether the presence of warnings should be treated as a failure condition.
         /// </summary>
         public readonly bool TreatWarningsAsErrors;
+
+        /// <summary>
+        /// Indicates whether warnings about missing parts of a docstring are ignored.
+        /// </summary>
+        public readonly bool IgnoreMissingDocs;
 
         /// <summary>
         /// A predicate that determines whether a parameter set should be excluded from the
@@ -39,9 +43,10 @@ namespace XmlDoc2CmdletDoc.Core
         /// <summary>
         /// Creates a new instance with the specified settings.
         /// </summary>
-        /// <param name="treatWarningsAsErrors">Indicates whether or not the presence of warnings should be treated as a failure condition.</param>
         /// <param name="assemblyPath">The path of the taget assembly whose XML Doc comments file is to be converted
         /// into a cmdlet XML Help file.</param>
+        /// <param name="treatWarningsAsErrors">Indicates whether or not the presence of warnings should be treated as a failure condition.</param>
+        /// <param name="ignoreMissingDocs">Indicates whether warnings about missing parts of a docstring are ignored.</param>
         /// <param name="isExcludedParameterSetName">A predicate that determines whether a parameter set should be excluded from the
         /// output help file, based on its name.
         /// This is intended to be used for deprecated parameter sets, to make them less discoverable.</param>
@@ -50,15 +55,18 @@ namespace XmlDoc2CmdletDoc.Core
         /// <param name="docCommentsPath">The path of the XML Doc comments file for the target assembly.
         /// If <c>null</c>, an appropriate default is selected based on <paramref name="assemblyPath"/></param>
         public Options(
-            bool treatWarningsAsErrors,
-            string assemblyPath,
-            Predicate<string> isExcludedParameterSetName = null,
-            string outputHelpFilePath = null,
-            string docCommentsPath = null)
+                string assemblyPath,
+                bool treatWarningsAsErrors = false,
+                bool ignoreMissingDocs = false,
+                Predicate<string> isExcludedParameterSetName = null,
+                string outputHelpFilePath = null,
+                string docCommentsPath = null)
         {
             if (assemblyPath == null) throw new ArgumentNullException(nameof(assemblyPath));
 
             TreatWarningsAsErrors = treatWarningsAsErrors;
+
+            IgnoreMissingDocs = ignoreMissingDocs;
 
             AssemblyPath = Path.GetFullPath(assemblyPath);
 
@@ -78,6 +86,7 @@ namespace XmlDoc2CmdletDoc.Core
         /// </summary>
         public override string ToString() => $"AssemblyPath: {AssemblyPath}, " +
                                              $"OutputHelpFilePath: {OutputHelpFilePath}, " +
-                                             $"TreatWarningsAsErrors {TreatWarningsAsErrors}";
+                                             $"TreatWarningsAsErrors {TreatWarningsAsErrors}, " +
+                                             $"IgnoreWarnings: {IgnoreMissingDocs}";
     }
 }

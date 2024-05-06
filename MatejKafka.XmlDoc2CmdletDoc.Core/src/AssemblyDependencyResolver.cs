@@ -17,6 +17,7 @@ internal sealed class AssemblyDependencyResolver : IDisposable {
     public readonly Assembly Assembly;
     private readonly DependencyContext _dependencyContext;
     private readonly ICompilationAssemblyResolver _assemblyResolver;
+    private readonly string _baseDir;
 
     public AssemblyDependencyResolver(string loadedAssemblyPath) {
         _loadContext = new AssemblyLoadContext(loadedAssemblyPath, true);
@@ -24,9 +25,8 @@ internal sealed class AssemblyDependencyResolver : IDisposable {
         Assembly = _loadContext.LoadFromAssemblyPath(loadedAssemblyPath);
         _dependencyContext = DependencyContext.Load(Assembly)
                              ?? throw new RuntimeException("Could not load DependencyContext");
+        _baseDir = Path.GetDirectoryName(loadedAssemblyPath)!;
         _assemblyResolver = new CompositeCompilationAssemblyResolver([
-            // probe the app's bin folder
-            new AppBaseCompilationAssemblyResolver(Path.GetDirectoryName(loadedAssemblyPath)!),
             // probe reference assemblies
             new ReferenceAssemblyPathResolver(),
             // probe NuGet package cache
@@ -40,6 +40,28 @@ internal sealed class AssemblyDependencyResolver : IDisposable {
     }
 
     private Assembly? OnResolving(AssemblyLoadContext context, AssemblyName name) {
+        var path = ResolveAssemblyPath(name);
+        if (path == null) {
+            return null; // not found
+        }
+
+        try {
+            return _loadContext.LoadFromAssemblyPath(path);
+        } catch {
+            return null; // loading failed, ignore
+        }
+    }
+
+    private string? ResolveAssemblyPath(AssemblyName name) {
+        // loading from the base directory using `AppBaseCompilationAssemblyResolver` seems to behave a bit wonky,
+        //  and I'm a bit confused on how it should even theoretically find the assemblies (it iterates over the `Assemblies`
+        //  property of `CompilationLibrary`, but that one seems empty for all assemblies I tried)
+        // try to load the assembly from the base assembly directory manually
+        var localPath = ResolveFromBaseDirectory(name);
+        if (localPath != null) {
+            return localPath;
+        }
+
         // try to resolve the dependent assembly by looking in the dependency ({assembly}.deps.json) file
         var compileLibrary = _dependencyContext.CompileLibraries
                 .FirstOrDefault(x => x.Name.Equals(name.Name, StringComparison.OrdinalIgnoreCase));
@@ -60,14 +82,27 @@ internal sealed class AssemblyDependencyResolver : IDisposable {
         }
 
         var assemblyPaths = new List<string>();
-        if (_assemblyResolver.TryResolveAssemblyPaths(compileLibrary, assemblyPaths)) {
-            try {
-                return _loadContext.LoadFromAssemblyPath(assemblyPaths.First());
-            } catch {
-                // ignored
-            }
+        if (_assemblyResolver.TryResolveAssemblyPaths(compileLibrary, assemblyPaths) && assemblyPaths.Count > 0) {
+            return assemblyPaths[0];
         }
 
         return null;
+    }
+
+    private string? ResolveFromBaseDirectory(AssemblyName name) {
+        var path = Path.Join(_baseDir, name.Name + ".dll");
+
+        AssemblyName fileAssembly;
+        try {
+            fileAssembly = AssemblyName.GetAssemblyName(path);
+        } catch (FileNotFoundException) {
+            return null;
+        }
+
+        if (!string.Equals(fileAssembly.FullName, name.FullName, StringComparison.OrdinalIgnoreCase)) {
+            return null; // assembly details (most likely version) do not match
+        }
+
+        return path;
     }
 }

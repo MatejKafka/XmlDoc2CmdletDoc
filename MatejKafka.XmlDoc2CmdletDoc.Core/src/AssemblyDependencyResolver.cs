@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Management.Automation;
 using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Extensions.DependencyModel;
@@ -15,7 +14,7 @@ namespace XmlDoc2CmdletDoc.Core;
 internal sealed class AssemblyDependencyResolver : IDisposable {
     private readonly AssemblyLoadContext _loadContext;
     public readonly Assembly Assembly;
-    private readonly DependencyContext _dependencyContext;
+    private readonly DependencyContext? _dependencyContext;
     private readonly ICompilationAssemblyResolver _assemblyResolver;
     private readonly string _baseDir;
 
@@ -23,8 +22,8 @@ internal sealed class AssemblyDependencyResolver : IDisposable {
         _loadContext = new AssemblyLoadContext(loadedAssemblyPath, true);
         _loadContext.Resolving += OnResolving;
         Assembly = _loadContext.LoadFromAssemblyPath(loadedAssemblyPath);
-        _dependencyContext = DependencyContext.Load(Assembly)
-                             ?? throw new RuntimeException("Could not load DependencyContext");
+        // this will be null if there's no .deps.json file
+        _dependencyContext = DependencyContext.Load(Assembly);
         _baseDir = Path.GetDirectoryName(loadedAssemblyPath)!;
         _assemblyResolver = new CompositeCompilationAssemblyResolver([
             // probe reference assemblies
@@ -60,6 +59,12 @@ internal sealed class AssemblyDependencyResolver : IDisposable {
         var localPath = ResolveFromBaseDirectory(name);
         if (localPath != null) {
             return localPath;
+        }
+
+        // TODO: check what happens with arch-specific subdirectories in the publish dir
+
+        if (_dependencyContext == null) {
+            return null; // no .deps.json file, and not present in the base directory
         }
 
         // try to resolve the dependent assembly by looking in the dependency ({assembly}.deps.json) file

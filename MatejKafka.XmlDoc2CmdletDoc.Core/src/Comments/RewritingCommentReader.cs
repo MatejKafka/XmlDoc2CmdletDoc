@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Management.Automation;
 using System.Reflection;
@@ -34,21 +33,18 @@ public class RewritingCommentReader : ICommentReader {
         }
 
         foreach (var childElement in element.Elements()) {
-            WalkElements(childElement, CollapseSeeElement);
+            CollapseSeeElements(childElement);
         }
         return element;
     }
 
-    private static void WalkElements(XElement element, Func<XElement, bool> action) {
-        var stack = new Stack<XElement>();
-        stack.Push(element);
-        while (stack.Count > 0) {
-            var currentElement = stack.Pop();
-            if (action(currentElement)) {
-                foreach (var childElement in currentElement.Elements()) {
-                    stack.Push(childElement);
-                }
-            }
+    private static void CollapseSeeElements(XElement element) {
+        if (!CollapseSeeElement(element)) {
+            return;
+        }
+
+        foreach (var e in element.Elements()) {
+            CollapseSeeElements(e);
         }
     }
 

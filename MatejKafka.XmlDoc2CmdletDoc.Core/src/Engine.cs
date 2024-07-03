@@ -312,31 +312,8 @@ public class Engine {
             parametersElement.Add(GenerateComment("Parameter: " + parameter.Name));
             parametersElement.Add(GenerateParameterElement(commentReader, parameter, ParameterAttribute.AllParameterSets,
                     reportWarning));
-            GenerateAliasElements(commentReader, reportWarning, parameter, parametersElement);
         }
         return parametersElement;
-    }
-
-    // Because the proper aliases generated in GenerateParameterElement are not manifested by Get-Help,
-    // this simply duplicates parameters that have aliases, substituting in the alias name.
-    // Thus, one could do Get-Help xyz -param actualName or Get-Help xyz -param aliasName
-    private void GenerateAliasElements(ICommentReader commentReader, ReportWarning reportWarning, Parameter parameter,
-            XElement parametersElement) {
-        foreach (var alias in parameter.Aliases) {
-            var parameterElement = GenerateParameterElement(commentReader, parameter,
-                    ParameterAttribute.AllParameterSets, reportWarning);
-            parametersElement.Add(parameterElement);
-            var nameElement = (XElement) (parameterElement.Nodes().First(n => ((XElement) n).Name == MamlNs + "name"));
-            nameElement.Value = alias;
-            var descriptionElement = (XElement) (parameterElement.Nodes()
-                    .FirstOrDefault(n => ((XElement) n).Name == MamlNs + "description"));
-            if (descriptionElement == null) {
-                descriptionElement = new XElement(MamlNs + "description");
-                parameterElement.Add(descriptionElement);
-            }
-            descriptionElement.Add(new XElement(MamlNs + "para",
-                    $"This is an alias of the {parameter.Name} parameter."));
-        }
     }
 
     /// <summary>

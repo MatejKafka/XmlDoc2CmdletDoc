@@ -1,12 +1,3 @@
-// ----------------------------------------------------------------------------
-// XmlDocCommentReader.cs
-//
-// Contains the definition of the XmlDocCommentReader class.
-// Copyright 2008 Steve Guidi.
-//
-// File created: 12/28/2008 22:49:42
-// ----------------------------------------------------------------------------
-
 using System;
 using System.Collections.Generic;
 using System.IO;

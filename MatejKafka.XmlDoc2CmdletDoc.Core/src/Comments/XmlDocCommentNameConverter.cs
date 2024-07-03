@@ -1,12 +1,3 @@
-// ----------------------------------------------------------------------------
-// Convert.cs
-//
-// Contains the definition of the Convert class.
-// Copyright 2009 Steve Guidi.
-//
-// File created: 2/6/2009 6:03:32 PM
-// ----------------------------------------------------------------------------
-
 using System;
 using System.Collections.Generic;
 using System.Linq;

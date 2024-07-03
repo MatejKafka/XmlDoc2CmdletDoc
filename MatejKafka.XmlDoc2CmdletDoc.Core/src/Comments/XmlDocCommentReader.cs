@@ -16,7 +16,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 
-namespace XmlDoc2CmdletDoc.Core.Comments.Reader;
+namespace XmlDoc2CmdletDoc.Core.Comments;
 
 // Represents a factory method for creating types that implement
 // the IXmlDocCommentReadPolicy interface.  The string parameter
@@ -26,7 +26,7 @@ namespace XmlDoc2CmdletDoc.Core.Comments.Reader;
 /// Provides methods to retrieve the XML Documentation Comments for an
 /// object having a metadata type from the System.Reflection namespace.
 /// </summary>
-public sealed class XmlDocCommentReader {
+public sealed class XmlDocCommentReader : ICommentReader {
     private readonly Dictionary<string, XElement> _docComments;
 
     /// <summary>

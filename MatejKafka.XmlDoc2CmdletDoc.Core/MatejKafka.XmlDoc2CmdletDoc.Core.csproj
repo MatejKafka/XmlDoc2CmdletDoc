@@ -12,6 +12,8 @@
     <PackageReference Include="PowerShellStandard.Library" Version="7.0.0-preview.1"/>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="src\Comments\Reader\DocComments.xsd" LogicalName="DocComments.xsd" />
+    <EmbeddedResource Include="src\Comments\DocComments.xsd">
+      <LogicalName>DocComments.xsd</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

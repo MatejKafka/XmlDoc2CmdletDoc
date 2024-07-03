@@ -13,7 +13,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace XmlDoc2CmdletDoc.Core.Comments.Reader;
+namespace XmlDoc2CmdletDoc.Core.Comments;
 
 /// <summary>
 /// Provides methods to convert between representations of a type.

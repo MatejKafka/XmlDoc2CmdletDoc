@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MatejKafka.XmlDoc2CmdletDoc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MatejKafka.XmlDoc2CmdletDoc", "MatejKafka.XmlDoc2CmdletDoc\MatejKafka.XmlDoc2CmdletDoc.csproj", "{34C12E10-BF70-4771-89CA-234DBD44E03A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jolt", "Jolt\Jolt.csproj", "{DA98557A-159C-4D4B-9663-7E7D479318CE}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{34C12E10-BF70-4771-89CA-234DBD44E03A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{34C12E10-BF70-4771-89CA-234DBD44E03A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{34C12E10-BF70-4771-89CA-234DBD44E03A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DA98557A-159C-4D4B-9663-7E7D479318CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DA98557A-159C-4D4B-9663-7E7D479318CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DA98557A-159C-4D4B-9663-7E7D479318CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DA98557A-159C-4D4B-9663-7E7D479318CE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

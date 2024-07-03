@@ -8,16 +8,13 @@
      *
   -->
 
-<xs:schema
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  elementFormDefault="unqualified">
-
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="NameType">
     <xs:restriction base="xs:string">
       <xs:minLength value="1"/>
     </xs:restriction>
   </xs:simpleType>
-  
+
   <xs:complexType name="AssemblyType">
     <xs:sequence>
       <xs:element name="name" type="NameType"/>
@@ -43,6 +40,6 @@
       <xs:element name="members" type="MemberCollectionType"/>
     </xs:sequence>
   </xs:complexType>
-  
+
   <xs:element name="doc" type="DocumentType"/>
 </xs:schema>

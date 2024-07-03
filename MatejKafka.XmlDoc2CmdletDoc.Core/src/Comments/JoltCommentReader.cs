@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Xml.Linq;
-using Jolt;
+using XmlDoc2CmdletDoc.Core.Comments.Reader;
 
 namespace XmlDoc2CmdletDoc.Core.Comments
 {

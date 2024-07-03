@@ -314,14 +314,11 @@ public static class CommentReaderExtensions {
     /// Obtains a <em>&lt;maml:description&gt;</em> for a command's output type.
     /// </summary>
     /// <param name="commentReader">The comment reader.</param>
-    /// <param name="command">The command.</param>
     /// <param name="outputType">The output type of the command.</param>
     /// <param name="reportWarning">Used to log any warnings.</param>
     /// <returns>A <em>&lt;maml:description&gt;</em> for the command's output type,
     /// or null if no explicit description is available for the output type.</returns>
-    public static XElement GetOutputTypeDescriptionElement(this ICommentReader commentReader,
-            Command command,
-            Type outputType,
+    public static XElement GetOutputTypeDescriptionElement(this ICommentReader commentReader, Type outputType,
             ReportWarning reportWarning) {
         // TODO: Get the description from the <remarks type="outputType" cref="<type>"> element
         return commentReader.GetTypeDescriptionElement(outputType, reportWarning);

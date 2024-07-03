@@ -15,7 +15,7 @@ namespace XmlDoc2CmdletDoc.Core;
 /// <summary>
 /// Delegate used when reporting a warning against a reflected member.
 /// </summary>
-/// <param name="target">The reflected meber to which the warning pertains.</param>
+/// <param name="target">The reflected member to which the warning pertains.</param>
 /// <param name="warningText">The warning message.</param>
 public delegate void ReportWarning(MemberInfo target, string warningText);
 
@@ -26,7 +26,7 @@ public delegate void ReportWarning(MemberInfo target, string warningText);
 /// <remarks>
 /// A lot of the detailed help generation is also delegated to <see cref="CommentReaderExtensions"/>.
 /// This class is generally responsible for generating the overall structure of the XML help file, whilst
-/// <see cref="CommentReaderExtensions"/> is resonsible for generating specific items of documentation,
+/// <see cref="CommentReaderExtensions"/> is responsible for generating specific items of documentation,
 /// such as command synopses, and command and parameter descriptions.
 /// </remarks>
 public class Engine {
@@ -59,11 +59,9 @@ public class Engine {
 
             HandleWarnings(options, warnings, assembly);
 
-            using (var stream = new FileStream(options.OutputHelpFilePath, FileMode.Create, FileAccess.Write,
-                           FileShare.None))
-            using (var writer = new StreamWriter(stream, Encoding.UTF8)) {
-                document.Save(writer);
-            }
+            using var stream = new FileStream(options.OutputHelpFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var writer = new StreamWriter(stream, Encoding.UTF8);
+            document.Save(writer);
 
             return EngineExitCode.Success;
         } catch (Exception exception) {
@@ -88,7 +86,7 @@ public class Engine {
     private static void HandleWarnings(Options options, IEnumerable<Tuple<MemberInfo, string>> warnings,
             Assembly targetAssembly) {
         var groups = warnings.Where(tuple => {
-                    // Exclude warnings about types outside of the assembly being documented.
+                    // Exclude warnings about types outside the assembly being documented.
                     var type = tuple.Item1 as Type ?? tuple.Item1.DeclaringType;
                     return type != null && type.Assembly == targetAssembly;
                 })
@@ -115,10 +113,9 @@ public class Engine {
     /// Returns the fully-qualified name of a type, property or field.
     /// </summary>
     /// <param name="memberInfo">The member.</param>
-    /// <returns>The fully qualified name of the mamber.</returns>
+    /// <returns>The fully qualified name of the member.</returns>
     private static string GetFullyQualifiedName(MemberInfo memberInfo) {
-        var type = memberInfo as Type;
-        return type != null
+        return memberInfo is Type type
                 ? type.FullName
                 : $"{GetFullyQualifiedName(memberInfo.DeclaringType)}.{memberInfo.Name}";
     }
@@ -128,7 +125,7 @@ public class Engine {
     /// </summary>
     /// <param name="options">The options.</param>
     /// <returns>The assembly indicated in the <paramref name="options"/>.</returns>
-    private Assembly LoadAssembly(Options options) {
+    private static Assembly LoadAssembly(Options options) {
         if (!File.Exists(options.AssemblyPath)) {
             throw new EngineException(EngineExitCode.AssemblyNotFound,
                     "Assembly file not found: " + options.AssemblyPath);
@@ -150,7 +147,7 @@ public class Engine {
     /// <param name="options">The options.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A comment reader for the assembly in the <paramref name="options"/>.</returns>
-    private ICommentReader LoadComments(Options options, ReportWarning reportWarning) {
+    private static ICommentReader LoadComments(Options options, ReportWarning reportWarning) {
         var docCommentsPath = options.DocCommentsPath;
         if (!File.Exists(docCommentsPath)) {
             throw new EngineException(EngineExitCode.AssemblyCommentsNotFound,
@@ -187,11 +184,11 @@ public class Engine {
     /// Generates the root-level <em>&lt;helpItems&gt;</em> element.
     /// </summary>
     /// <param name="commentReader"></param>
-    /// <param name="commands">All of the commands in the module being documented.</param>
+    /// <param name="commands">All the commands in the module being documented.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <param name="options">The XmlDoc2CmdletDoc options.</param>
     /// <returns>The root-level <em>helpItems</em> element.</returns>
-    private XElement GenerateHelpItemsElement(ICommentReader commentReader, IEnumerable<Command> commands,
+    private static XElement GenerateHelpItemsElement(ICommentReader commentReader, IEnumerable<Command> commands,
             ReportWarning reportWarning, Options options) {
         var helpItemsElement = new XElement(MshNs + "helpItems", new XAttribute("schema", "maml"));
         foreach (var command in commands) {
@@ -209,48 +206,25 @@ public class Engine {
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <param name="options">The XmlDoc2CmdletDoc options.</param>
     /// <returns>A <em>&lt;command:command&gt;</em> element that represents the <paramref name="command"/>.</returns>
-    private XElement GenerateCommandElement(ICommentReader commentReader, Command command, ReportWarning reportWarning,
-            Options options) {
+    private static XElement GenerateCommandElement(ICommentReader commentReader, Command command,
+            ReportWarning reportWarning, Options options) {
         return new XElement(CommandNs + "command",
                 new XAttribute(XNamespace.Xmlns + "maml", MamlNs),
                 new XAttribute(XNamespace.Xmlns + "command", CommandNs),
                 new XAttribute(XNamespace.Xmlns + "dev", DevNs),
-                GenerateDetailsElement(commentReader, command, reportWarning),
-                GenerateDescriptionElement(commentReader, command, reportWarning),
+                new XElement(CommandNs + "details",
+                        new XElement(CommandNs + "name", command.Name),
+                        new XElement(CommandNs + "verb", command.Verb),
+                        new XElement(CommandNs + "noun", command.Noun),
+                        commentReader.GetCommandSynopsisElement(command, reportWarning)),
+                commentReader.GetCommandDescriptionElement(command, reportWarning),
                 GenerateSyntaxElement(commentReader, command, reportWarning, options.IsExcludedParameterSetName),
                 GenerateParametersElement(commentReader, command, reportWarning),
                 GenerateInputTypesElement(commentReader, command, reportWarning),
                 GenerateReturnValuesElement(commentReader, command, reportWarning),
-                GenerateAlertSetElement(commentReader, command, reportWarning),
-                GenerateExamplesElement(commentReader, command, reportWarning),
-                GenerateRelatedLinksElement(commentReader, command, reportWarning));
-    }
-
-    /// <summary>
-    /// Generates the <em>&lt;command:details&gt;</em> element for a command.
-    /// </summary>
-    /// <param name="commentReader"></param>
-    /// <param name="command">The command.</param>
-    /// <param name="reportWarning">Function used to log warnings.</param>
-    /// <returns>A <em>&lt;command:details&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateDetailsElement(ICommentReader commentReader, Command command, ReportWarning reportWarning) {
-        return new XElement(CommandNs + "details",
-                new XElement(CommandNs + "name", command.Name),
-                new XElement(CommandNs + "verb", command.Verb),
-                new XElement(CommandNs + "noun", command.Noun),
-                commentReader.GetCommandSynopsisElement(command, reportWarning));
-    }
-
-    /// <summary>
-    /// Generates the <em>&lt;maml:description&gt;</em> element for a command.
-    /// </summary>
-    /// <param name="commentReader"></param>
-    /// <param name="command">The command.</param>
-    /// <param name="reportWarning">Function used to log warnings.</param>
-    /// <returns>A <em>&lt;maml:description&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateDescriptionElement(ICommentReader commentReader, Command command,
-            ReportWarning reportWarning) {
-        return commentReader.GetCommandDescriptionElement(command, reportWarning);
+                commentReader.GetCommandAlertSetElement(command, reportWarning),
+                commentReader.GetCommandExamplesElement(command, reportWarning),
+                commentReader.GetCommandRelatedLinksElement(command, reportWarning));
     }
 
     /// <summary>
@@ -259,9 +233,9 @@ public class Engine {
     /// <param name="commentReader">Provides access to the XML Doc comments.</param>
     /// <param name="command">The command.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
-    /// <param name="isExcludedParameterSetName">Determines whether or not to exclude a parameter set from the cmdlet XML Help file, based on its name.</param>
+    /// <param name="isExcludedParameterSetName">Determines whether to exclude a parameter set from the cmdlet XML Help file, based on its name.</param>
     /// <returns>A <em>&lt;command:syntax&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateSyntaxElement(ICommentReader commentReader, Command command, ReportWarning reportWarning,
+    private static XElement GenerateSyntaxElement(ICommentReader commentReader, Command command, ReportWarning reportWarning,
             Predicate<string> isExcludedParameterSetName) {
         var syntaxElement = new XElement(CommandNs + "syntax");
         IEnumerable<string> parameterSetNames = command.ParameterSetNames.ToList();
@@ -283,7 +257,7 @@ public class Engine {
     /// <param name="parameterSetName">The parameter set name.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A <em>&lt;command:syntaxItem&gt;</em> element for the specific <paramref name="parameterSetName"/> of the <paramref name="command"/>.</returns>
-    private XElement GenerateSyntaxItemElement(ICommentReader commentReader, Command command, string parameterSetName,
+    private static XElement GenerateSyntaxItemElement(ICommentReader commentReader, Command command, string parameterSetName,
             ReportWarning reportWarning) {
         var syntaxItemElement = new XElement(CommandNs + "syntaxItem",
                 new XElement(MamlNs + "name", command.Name));
@@ -305,7 +279,7 @@ public class Engine {
     /// <param name="command">The command.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A <em>&lt;command:parameters&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateParametersElement(ICommentReader commentReader, Command command,
+    private static XElement GenerateParametersElement(ICommentReader commentReader, Command command,
             ReportWarning reportWarning) {
         var parametersElement = new XElement(CommandNs + "parameters");
         foreach (var parameter in command.Parameters) {
@@ -324,8 +298,8 @@ public class Engine {
     /// <param name="parameterSetName">The specific parameter set name, or <see cref="ParameterAttribute.AllParameterSets"/>.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A <em>&lt;command:parameter&gt;</em> element for the <paramref name="parameter"/>.</returns>
-    private XElement GenerateParameterElement(ICommentReader commentReader, Parameter parameter, string parameterSetName,
-            ReportWarning reportWarning) {
+    private static XElement GenerateParameterElement(ICommentReader commentReader, Parameter parameter,
+            string parameterSetName, ReportWarning reportWarning) {
         var position = parameter.GetPosition(parameterSetName);
 
         var element = new XElement(CommandNs + "parameter",
@@ -354,9 +328,7 @@ public class Engine {
             ReportWarning reportWarning) {
         var descriptionElement = commentReader.GetParameterDescriptionElement(parameter, reportWarning);
         if (parameter.EnumValues.Any()) {
-            if (descriptionElement == null) {
-                descriptionElement = new XElement(MamlNs + "description");
-            }
+            descriptionElement ??= new XElement(MamlNs + "description");
             descriptionElement.Add(
                     new XElement(MamlNs + "para",
                             "Possible values: " + string.Join(", ", parameter.EnumValues)));
@@ -368,7 +340,7 @@ public class Engine {
     /// Generates a <em>&lt;command:parameterValueGroup&gt;</em> element for a parameter
     /// in order to display enum choices in the cmdlet's syntax section.
     /// </summary>
-    private XElement GetParameterEnumeratedValuesElement(Parameter parameter) {
+    private static XElement GetParameterEnumeratedValuesElement(Parameter parameter) {
         var enumValues = parameter.EnumValues.ToList();
         if (enumValues.Any()) {
             var parameterValueGroupElement = new XElement(CommandNs + "parameterValueGroup");
@@ -383,7 +355,7 @@ public class Engine {
     /// <summary>
     /// Generates a <em>&lt;command:parameterValue&gt;</em> element for a single enum value.
     /// </summary>
-    private XElement GenerateParameterEnumeratedValueElement(string enumValue) {
+    private static XElement GenerateParameterEnumeratedValueElement(string enumValue) {
         // These hard-coded attributes were copied from what PowerShell's own core cmdlets use
         return new XElement(CommandNs + "parameterValue",
                 new XAttribute("required", false),
@@ -398,7 +370,7 @@ public class Engine {
     /// <param name="command">The command.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A <em>&lt;command:inputTypes&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateInputTypesElement(ICommentReader commentReader, Command command,
+    private static XElement GenerateInputTypesElement(ICommentReader commentReader, Command command,
             ReportWarning reportWarning) {
         var inputTypesElement = new XElement(CommandNs + "inputTypes");
         var pipelineParameters = command.GetParameters(ParameterAttribute.AllParameterSets)
@@ -416,7 +388,7 @@ public class Engine {
     /// <param name="parameter">The parameter.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A <em>&lt;command:inputType&gt;</em> element for the <paramref name="parameter"/>'s type.</returns>
-    private XElement GenerateInputTypeElement(ICommentReader commentReader, Parameter parameter,
+    private static XElement GenerateInputTypeElement(ICommentReader commentReader, Parameter parameter,
             ReportWarning reportWarning) {
         var inputTypeDescription = commentReader.GetInputTypeDescriptionElement(parameter, reportWarning);
         return new XElement(CommandNs + "inputType",
@@ -431,12 +403,12 @@ public class Engine {
     /// <param name="command">The command.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A <em>&lt;command:returnValues&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateReturnValuesElement(ICommentReader commentReader, Command command,
+    private static XElement GenerateReturnValuesElement(ICommentReader commentReader, Command command,
             ReportWarning reportWarning) {
         var returnValueElement = new XElement(CommandNs + "returnValues");
         foreach (var type in command.OutputTypes) {
             returnValueElement.Add(GenerateComment("OutputType: " + (type == typeof(void) ? "None" : type.Name)));
-            var returnValueDescription = commentReader.GetOutputTypeDescriptionElement(command, type, reportWarning);
+            var returnValueDescription = commentReader.GetOutputTypeDescriptionElement(type, reportWarning);
             returnValueElement.Add(new XElement(CommandNs + "returnValue",
                     GenerateTypeElement(commentReader, type, returnValueDescription == null, reportWarning),
                     returnValueDescription));
@@ -445,52 +417,16 @@ public class Engine {
     }
 
     /// <summary>
-    /// Generates the <em>&lt;maml:alertSet&gt;</em> element for a command.
-    /// </summary>
-    /// <param name="commentReader">Provides access to the XML Doc comments.</param>
-    /// <param name="command">The command.</param>
-    /// <param name="reportWarning">Function used to log warnings.</param>
-    /// <returns>A <em>&lt;maml:alertSet&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateAlertSetElement(ICommentReader commentReader, Command command,
-            ReportWarning reportWarning) {
-        return commentReader.GetCommandAlertSetElement(command, reportWarning);
-    }
-
-    /// <summary>
-    /// Generates the <em>&lt;command:examples&gt;</em> element for a command.
-    /// </summary>
-    /// <param name="commentReader">Provides access to the XML Doc comments.</param>
-    /// <param name="command">The command.</param>
-    /// <param name="reportWarning">Function used to log warnings.</param>
-    /// <returns>A <em>&lt;command:examples&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateExamplesElement(ICommentReader commentReader, Command command,
-            ReportWarning reportWarning) {
-        return commentReader.GetCommandExamplesElement(command, reportWarning);
-    }
-
-    /// <summary>
-    /// Generates the <em>&lt;maml:relatedLinks&gt;</em> element for a command.
-    /// </summary>
-    /// <param name="commentReader">Provides access to the XML Doc comments.</param>
-    /// <param name="command">The command.</param>
-    /// <param name="reportWarning">Function used to log warnings.</param>
-    /// <returns>A <em>&lt;maml:relatedLinks&gt;</em> element for the <paramref name="command"/>.</returns>
-    private XElement GenerateRelatedLinksElement(ICommentReader commentReader, Command command,
-            ReportWarning reportWarning) {
-        return commentReader.GetCommandRelatedLinksElement(command, reportWarning);
-    }
-
-    /// <summary>
     /// Generates a <em>&lt;dev:type&gt;</em> element for a type.
     /// </summary>
     /// <param name="commentReader">Provides access to the XML Doc comments.</param>
-    /// <param name="type">The type for which a corresopnding <em>&lt;dev:type&gt;</em> element is required.</param>
-    /// <param name="includeMamlDescription">Indicates whether or not a <em>&lt;maml:description&gt;</em> element should be
+    /// <param name="type">The type for which a corresponding <em>&lt;dev:type&gt;</em> element is required.</param>
+    /// <param name="includeMamlDescription">Indicates whether a <em>&lt;maml:description&gt;</em> element should be
     /// included for the type. A description can be obtained from the type's XML Doc comment, but it is useful to suppress it if
     /// a more context-specific description is available where the <em>&lt;dev:type&gt;</em> element is actually used.</param>
     /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A <em>&lt;dev:type&gt;</em> element for the specified <paramref name="type"/>.</returns>
-    private XElement GenerateTypeElement(ICommentReader commentReader, Type type, bool includeMamlDescription,
+    private static XElement GenerateTypeElement(ICommentReader commentReader, Type type, bool includeMamlDescription,
             ReportWarning reportWarning) {
         return new XElement(DevNs + "type",
                 new XElement(MamlNs + "name", type == typeof(void) ? "None" : type.FullName),
@@ -503,7 +439,7 @@ public class Engine {
     /// </summary>
     /// <param name="text">The text of the comment.</param>
     /// <returns>An <see cref="XComment"/> instance based on the specified <paramref name="text"/>.</returns>
-    private XComment GenerateComment(string text) {
+    private static XComment GenerateComment(string text) {
         return new XComment($" {text} ");
     }
 }

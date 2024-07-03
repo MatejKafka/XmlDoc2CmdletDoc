@@ -11,9 +11,8 @@ namespace XmlDoc2CmdletDoc
         {
             var options = ParseArguments(args);
             Console.WriteLine(options);
-            var engine = new Engine();
 
-            var exitCode = engine.GenerateHelp(options);
+            var exitCode = Engine.GenerateHelp(options);
             if (exitCode != 0)
             {
                 Console.WriteLine("GenerateHelp completed with exit code '{0}'", exitCode);

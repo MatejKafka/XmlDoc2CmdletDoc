@@ -7,7 +7,7 @@ dependencies from NuGet cache for local development builds.
 
 It's easy to write good help documentation for PowerShell *script* modules (those written in the PowerShell script language). You just write specially formatted comments alongside the source code for your cmdlets, and the PowerShell host automatically uses those comments to provide good inline help for your cmdlets' users. **XmlDoc2CmdletDoc** brings this same functionality to PowerShell *binary* modules (those written in C# or VB.NET). You no longer need to use *CmdletHelpEditor* or *PowerShell Cmdlet Help Editor* to manually edit a separate help file. Instead, this tool will automatically generate your PowerShell module's help file from XML Doc comments in your source code.
 
-For more details, [Michael Sorens](https://www.simple-talk.com/author/michael-sorens/) has written a [comprehensive guide to documenting your PowerShell binary cmdlets](https://www.simple-talk.com/dotnet/software-tools/documenting-your-powershell-binary-cmdlets/) using XmlDoc2CmdletDoc.
+For more details, [Michael Sorens](https://www.simple-talk.com/author/michael-sorens/) has written a [comprehensive guide to documenting your PowerShell binary cmdlets](https://www.simple-talk.com/dotnet/software-tools/documenting-your-powershell-binary-cmdlets/) using XmlDoc2CmdletDoc. However, do note that the article is a bit outdated, since some changes to the docstring structure have been made in v0.5.0.
 
 ## Usage
 
@@ -49,19 +49,14 @@ Here are some examples of how to document your cmdlets:
 
 ### Cmdlet synopsis and description
 
-The cmdlet's synopsis and description are defined using `<para>` elements in the cmdlet class's XML doc comment. Tag the `<para>` elements with a `type="synopsis"` or `type="description"` attribute, showing whether `<para>` is part of the synopsis or description. 
-
-You can use multiple `<para>` elements for both the synopsis and the description, but a cmdlet synopsis is usually just one sentence.
+The cmdlet's synopsis is defined using the `<summary>` element, and description is defined using `<para>` elements in the cmdlet class's XML doc comment. You can use multiple `<para>` elements for the description.
 
 ```c#
-/// <summary>
-/// <para type="synopsis">This is the cmdlet synopsis.</para>
-/// <para type="description">This is part of the longer cmdlet description.</para>
-/// <para type="description">This is also part of the longer cmdlet description.</para>
-/// </summary>
+/// <summary>This is the cmdlet synopsis.</summary>
+/// <para>This is part of the longer cmdlet description.</para>
+/// <para>This is also part of the longer cmdlet description.</para>
 [Cmdlet("Test", "MyExample")]
-public class TestMyExampleCommand : Cmdlet
-{
+public class TestMyExampleCommand : Cmdlet {
     ...
 }
 ```
@@ -72,18 +67,17 @@ For guidance on writing the cmdlet description, see http://msdn.microsoft.com/en
 
 ### Parameter description
 
-The description for a cmdlet parameter is defined using `<para>` elements in the XML doc comment for the parameter's field or property. Tag the `<para>` elements with a `type="description"` attribute.
+The description for a cmdlet parameter is defined either by a plain string, or by using `<para>` elements in the XML doc comment for the parameter's field or property.
 
 ```c#
 [Cmdlet("Test", "MyExample")]
-public class TestMyExampleCommand : Cmdlet
-{
-    /// <summary>
-    /// <para type="description">This is part of the parameter description.</para>
-    /// <para type="description">This is also part of the parameter description.</para>
-    /// </summary>
-    [Parameter]
-    public string MyParameter {get; set;}
+public class TestMyExampleCommand : Cmdlet {
+    /// Short single-paragraph parameter description, without any XML tags.
+    [Parameter]public string MyParameter;
+
+    /// <para>This is part of the parameter description.</para>
+    /// <para>This is also part of the parameter description.</para>
+    [Parameter] public string MyParameter;
     
     ...
 }
@@ -95,28 +89,23 @@ For guidance on writing the parameter description, see http://msdn.microsoft.com
 
 ### Type description
 
-You can document a parameter's input type or a cmdlet's output type, using `<para>` elements in the type's XML doc comment. As before, tag the `<para>` elements with a `type="description"` attribute. 
-
-You can only document types defined in the PowerShell module like this.
+You can document a parameter's input type or a cmdlet's output type, using a plain string or `<para>` elements in the type's XML doc comment, similarly to parameters.
 
 ```c#
 [Cmdlet("Test", "MyExample")]
-public class TestMyExampleCommand : Cmdlet
-{
-    [Parameter]
-    public MyType MyParameter {get; set;}
+public class TestMyExampleCommand : Cmdlet {
+    [Parameter] public MyType MyParameter;
+    [Parameter] public MyType2 MyParameter2;
     
     ...
 }
 
-/// <summary>
-/// <para type="description">This is part of the type description.</para>
-/// <para type="description">This is also part of the type description.</para>
-/// </summary>
-public class MyType
-{
-    ...
-}
+/// Short single-paragraph type documentation.
+public class MyType { ... }
+
+/// <para>This is part of the type description.</para>
+/// <para>This is also part of the type description.</para>
+public class MyType2 { ... }
 ```
 
 
@@ -143,8 +132,7 @@ Inside each `<item>` element, specify the note's title with the `<term>` sub-ele
 ///   </item>
 /// </list>
 [Cmdlet("Test", "MyExample")]
-public class TestMyExampleCommand : Cmdlet
-{
+public class TestMyExampleCommand : Cmdlet {
     ...
 }
 ```
@@ -169,8 +157,7 @@ To add multiple cmdlet examples, use multiple `<example>` elements.
 ///   <para>This is also part of the example's remarks.</para>
 /// </example>
 [Cmdlet("Test", "MyExample")]
-public class TestMyExampleCommand : Cmdlet
-{
+public class TestMyExampleCommand : Cmdlet {
     ...
 }
 ```
@@ -180,17 +167,13 @@ For guidance on writing cmdlet examples, see http://msdn.microsoft.com/en-us/lib
 
 ### Related links
 
-Related links are defined using `<para>` elements in the XML doc comment for the cmdlet class. Tag the relevant `<para>` elements with a `type="link"` attribute. The link text for each navigation link is taken from the body of the `<para>` element. If you want to include a uri, specify a uri attribute in the `<para>` element.
+Related links are defined using `<seealso href="..."/>` elements in the XML doc comment for the cmdlet class. The link text is taken from the body of the `<seealso>` element. If you want to include a URI, specify a `href` attribute.
 
 ```c#
-/// <summary>
-///   <para type="link">This is the text of the first link.</para>
-///   <para type="link">This is the text of the second link.</para>
-///   <para type="link" uri="https://github.com/red-gate/XmlDoc2CmdletDoc/">The XmlDoc2CmdletDoc website.</para>
-/// </summary>
+/// <seealso href="https://learn.microsoft.com/..."/>
+/// <seealso href="https://github.com/MatejKafka/XmlDoc2CmdletDoc/">XmlDoc2CmdletDoc repository</seealso>
 [Cmdlet("Test", "MyExample")]
-public class TestMyExampleCommand : Cmdlet
-{
+public class TestMyExampleCommand : Cmdlet {
     ...
 }
 ```

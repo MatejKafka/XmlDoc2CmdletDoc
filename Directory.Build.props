@@ -5,7 +5,7 @@
     <NoWarn>CS1591</NoWarn>
   </PropertyGroup>
   <PropertyGroup>
-    <Version>0.5.0</Version>
+    <Version>0.5.1</Version>
     <Product>XmlDoc2CmdletDoc</Product>
     <Copyright>
       Copyright © 2014-2020 Red Gate Software Ltd and other contributors,

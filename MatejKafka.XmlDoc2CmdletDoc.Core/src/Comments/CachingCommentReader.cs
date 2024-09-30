@@ -23,17 +23,17 @@ public class CachingCommentReader : ICommentReader {
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public XElement GetComments(Type type) {
-        return _cache.TryGetValue(type, out XElement element) ? element : _cache[type] = _proxy.GetComments(type);
+        return _cache.TryGetValue(type, out var element) ? element : _cache[type] = _proxy.GetComments(type);
     }
 
     public XElement GetComments(FieldInfo fieldInfo) {
-        return _cache.TryGetValue(fieldInfo, out XElement element)
+        return _cache.TryGetValue(fieldInfo, out var element)
                 ? element
                 : _cache[fieldInfo] = _proxy.GetComments(fieldInfo);
     }
 
     public XElement GetComments(PropertyInfo propertyInfo) {
-        return _cache.TryGetValue(propertyInfo, out XElement element)
+        return _cache.TryGetValue(propertyInfo, out var element)
                 ? element
                 : _cache[propertyInfo] = _proxy.GetComments(propertyInfo);
     }

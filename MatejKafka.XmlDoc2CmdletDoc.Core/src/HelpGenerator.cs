@@ -15,13 +15,15 @@ using XmlDoc2CmdletDoc.Core.Domain;
 
 namespace XmlDoc2CmdletDoc.Core;
 
-internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning) {
+internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning, Warnings warnings) {
     private static readonly XNamespace MshNs = XNamespace.Get("http://msh");
     private static readonly XNamespace MamlNs = XNamespace.Get("http://schemas.microsoft.com/maml/2004/10");
     private static readonly XNamespace CommandNs = XNamespace.Get("http://schemas.microsoft.com/maml/dev/command/2004/10");
     private static readonly XNamespace DevNs = XNamespace.Get("http://schemas.microsoft.com/maml/dev/2004/10");
 
     private static readonly IXmlNamespaceResolver Resolver;
+
+    private readonly HashSet<Type> _processedTypes = [];
 
     static HelpGenerator() {
         var manager = new XmlNamespaceManager(new NameTable());
@@ -54,6 +56,12 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// <param name="isExcludedParameterSetName"></param>
     /// <returns>A <em>&lt;command:command&gt;</em> element that represents the <paramref name="command"/>.</returns>
     private XElement Command(Command command, Predicate<string> isExcludedParameterSetName) {
+        var cmdletType = command.CmdletType;
+        var comments = reader.GetComments(cmdletType);
+        if (comments == null) {
+            reportWarning(command.CmdletType, "No top-level docstring comment found.");
+        }
+
         return new XElement(CommandNs + "command",
                 new XAttribute(XNamespace.Xmlns + "maml", MamlNs),
                 new XAttribute(XNamespace.Xmlns + "command", CommandNs),
@@ -62,15 +70,15 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
                         new XElement(CommandNs + "name", command.Name),
                         new XElement(CommandNs + "verb", command.Verb),
                         new XElement(CommandNs + "noun", command.Noun),
-                        Synopsis(command)),
-                Description(command),
+                        comments == null ? null : Synopsis(command, comments)),
+                comments == null ? null : Description(comments),
                 Syntax(command, isExcludedParameterSetName),
                 Parameters(command),
                 InputTypes(command),
                 ReturnTypes(command),
-                CommandAlerts(command),
-                Examples(command),
-                RelatedLinks(command));
+                comments == null ? null : CommandAlerts(comments),
+                comments == null ? null : Examples(command, comments),
+                comments == null ? null : RelatedLinks(comments));
     }
 
     /// <summary>
@@ -107,7 +115,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
                          .ThenBy(p => p.IsRequired(parameterSetName) ? "0" : "1")
                          .ThenBy(p => p.Name)) {
             syntaxItemElement.Add(Comment("Parameter: " + parameter.Name));
-            syntaxItemElement.Add(ParameterItem(parameter, parameterSetName));
+            syntaxItemElement.Add(ParameterItem(command, parameter, parameterSetName, false));
         }
         return syntaxItemElement;
     }
@@ -121,7 +129,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
         var parametersElement = new XElement(CommandNs + "parameters");
         foreach (var parameter in command.Parameters) {
             parametersElement.Add(Comment("Parameter: " + parameter.Name));
-            parametersElement.Add(ParameterItem(parameter, ParameterAttribute.AllParameterSets));
+            parametersElement.Add(ParameterItem(command, parameter, ParameterAttribute.AllParameterSets, true));
         }
         return parametersElement;
     }
@@ -129,10 +137,12 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// <summary>
     /// Generates a <em>&lt;command:parameter&gt;</em> element for a single parameter.
     /// </summary>
+    /// <param name="command"></param>
     /// <param name="parameter">The parameter.</param>
     /// <param name="parameterSetName">The specific parameter set name, or <see cref="ParameterAttribute.AllParameterSets"/>.</param>
+    /// <param name="generateDescription"></param>
     /// <returns>A <em>&lt;command:parameter&gt;</em> element for the <paramref name="parameter"/>.</returns>
-    private XElement ParameterItem(Parameter parameter, string parameterSetName) {
+    private XElement ParameterItem(Command command, Parameter parameter, string parameterSetName, bool generateDescription) {
         var position = parameter.GetPosition(parameterSetName);
 
         var element = new XElement(CommandNs + "parameter",
@@ -141,7 +151,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
                 new XAttribute("pipelineInput", parameter.GetIsPipelineAttribute(parameterSetName)),
                 position != null ? new XAttribute("position", position) : null,
                 new XElement(MamlNs + "name", parameter.Name),
-                ParameterDescription(parameter),
+                generateDescription ? ParameterDescription(command, parameter) : null,
                 ParameterValue(parameter),
                 Type(parameter.ParameterType, true),
                 ParameterDefaultValue(parameter),
@@ -201,11 +211,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// <param name="parameter">The parameter.</param>
     /// <returns>A <em>&lt;command:inputType&gt;</em> element for the <paramref name="parameter"/>'s type.</returns>
     private XElement InputTypeItem(Parameter parameter) {
-        // reuse the parameter description
-        var inputTypeDescription = ParameterDescription(parameter);
-        return new XElement(CommandNs + "inputType",
-                Type(parameter.ParameterType, inputTypeDescription == null),
-                inputTypeDescription);
+        return new XElement(CommandNs + "inputType", Type(parameter.ParameterType, false));
     }
 
     /// <summary>
@@ -217,10 +223,8 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
         var returnValueElement = new XElement(CommandNs + "returnValues");
         foreach (var type in command.OutputTypes) {
             returnValueElement.Add(Comment("OutputType: " + (type == typeof(void) ? "None" : type.Name)));
-            var returnValueDescription = TypeDescription(type);
             returnValueElement.Add(new XElement(CommandNs + "returnValue",
-                    Type(type, returnValueDescription == null),
-                    returnValueDescription));
+                    Type(type, false)));
         }
         return returnValueElement;
     }
@@ -253,34 +257,28 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// Obtains a <em>&lt;maml:description&gt;</em> element for a cmdlet's synopsis.
     /// </summary>
     /// <param name="command">The command.</param>
+    /// <param name="comments"></param>
     /// <returns>A description element for the cmdlet's synopsis.</returns>
-    private XElement? Synopsis(Command command) {
-        var cmdletType = command.CmdletType;
-        var commentsElement = reader.GetComments(cmdletType);
-        if (commentsElement == null) {
+    private XElement? Synopsis(Command command, XElement comments) {
+        var summary = comments.Element("summary");
+        if (summary == null) {
+            if ((warnings & Warnings.RequireCmdletSynopsis) != 0) {
+                reportWarning(command.CmdletType, "Missing synopsis (<summary> tag).");
+            }
             return null;
         }
-
-        var summary = commentsElement.Element("summary");
-        return ParseDescription(summary, w => reportWarning(cmdletType, w), "<summary>");
+        return ParseDescription(summary, w => reportWarning(command.CmdletType, w), "<summary>");
     }
 
     /// <summary>
     /// Obtains a <em>&lt;maml:description&gt;</em> element for a cmdlet's full description.
     /// </summary>
-    /// <param name="command">The command.</param>
+    /// <param name="comments"></param>
     /// <returns>A description element for the cmdlet's full description.</returns>
-    private XElement? Description(Command command) {
-        var cmdletType = command.CmdletType;
-        var comment = reader.GetComments(cmdletType);
-        if (comment == null) {
-            // warning should be already raised by synopsis code
-            return null;
-        }
-
-        var descriptions = comment.Elements("para").ToList();
+    private static XElement? Description(XElement comments) {
+        var descriptions = comments.Elements("para").ToList();
         if (descriptions.Count == 0) {
-            reportWarning(cmdletType, "Missing <para> description tags.");
+            // no description
             return null;
         }
 
@@ -295,25 +293,20 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// Obtains a <em>&lt;command:examples&gt;</em> element for a cmdlet's examples.
     /// </summary>
     /// <param name="command">The command.</param>
+    /// <param name="comments"></param>
     /// <returns>An examples element for the cmdlet.</returns>
-    private XElement? Examples(Command command) {
-        var cmdletType = command.CmdletType;
-        var comments = reader.GetComments(cmdletType);
-        if (comments == null) {
-            reportWarning(cmdletType, "No XML doc comment found.");
-            return null;
-        }
-
+    private XElement? Examples(Command command, XElement comments) {
         var xmlDocExamples = comments.XPathSelectElements("//example").ToList();
         if (!xmlDocExamples.Any()) {
-            reportWarning(cmdletType, "No examples found.");
+            // no examples found
             return null;
         }
 
         var examples = new XElement(CommandNs + "examples");
         var exampleNumber = 1;
         foreach (var xmlDocExample in xmlDocExamples) {
-            examples.Add(ExampleItem(xmlDocExample, exampleNumber, warningText => reportWarning(cmdletType, warningText)));
+            examples.Add(ExampleItem(xmlDocExample, exampleNumber,
+                    warningText => reportWarning(command.CmdletType, warningText)));
             exampleNumber++;
         }
         return exampleNumber == 1 ? null : examples;
@@ -363,15 +356,9 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// <summary>
     /// Obtains a <em>&lt;command:relatedLinks&gt;</em> element for a cmdlet's related links.
     /// </summary>
-    /// <param name="command">The command.</param>
+    /// <param name="comments"></param>
     /// <returns>An relatedLinks element for the cmdlet.</returns>
-    private XElement? RelatedLinks(Command command) {
-        var cmdletType = command.CmdletType;
-        var comments = reader.GetComments(cmdletType);
-        if (comments == null) {
-            return null;
-        }
-
+    private static XElement? RelatedLinks(XElement comments) {
         var links = comments.Elements("seealso").ToArray();
         if (!links.Any()) {
             return null;
@@ -394,15 +381,9 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// <summary>
     /// Obtains a <em>&lt;maml:alertSet&gt;</em> element for a cmdlet's notes.
     /// </summary>
-    /// <param name="command">The command.</param>
+    /// <param name="comments"></param>
     /// <returns>A <em>&lt;maml:alertSet&gt;</em> element for the cmdlet's notes.</returns>
-    private XElement? CommandAlerts(Command command) {
-        var cmdletType = command.CmdletType;
-        var comments = reader.GetComments(cmdletType);
-        if (comments == null) {
-            return null;
-        }
-
+    private static XElement? CommandAlerts(XElement comments) {
         // First see if there's an alertSet element in the comments
         var alertSet = comments.XPathSelectElement("//maml:alertSet", Resolver);
         if (alertSet != null) {
@@ -439,9 +420,10 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
     /// Obtains a <em>&lt;maml:description&gt;</em> element for a parameter.
     /// If the parameter is an Enum, add to the description a list of its legal values.
     /// </summary>
+    /// <param name="command"></param>
     /// <param name="parameter">The parameter.</param>
     /// <returns>A description element for the parameter.</returns>
-    private XElement? ParameterDescription(Parameter parameter) {
+    private XElement? ParameterDescription(Command command, Parameter parameter) {
         if (parameter is not ReflectionParameter rp) {
             // other parameter types do not support XML comments
             return null;
@@ -453,6 +435,13 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
             _ => throw new NotSupportedException("Member type not supported: " + rp.MemberInfo.MemberType),
         };
 
+        if (comment == null) {
+            if ((warnings & Warnings.RequireParameterDescription) != 0) {
+                reportWarning(command.CmdletType, $"Missing parameter description for parameter '{rp.MemberInfo.Name}'.");
+            }
+            return null;
+        }
+
         var description = ParseDescription(comment, w => reportWarning(rp.MemberInfo, w));
 
         if (parameter.EnumValues.Any()) {
@@ -462,12 +451,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
         return description;
     }
 
-    private static XElement? ParseDescription(XElement? comment, Action<string> reportWarning, string desc = "description") {
-        if (comment == null) {
-            reportWarning($"Missing {desc}.");
-            return null;
-        }
-
+    private static XElement? ParseDescription(XElement comment, Action<string> reportWarning, string desc = "description") {
         // either the docstring is composed of one or more paragraphs (no further structure is supported)...
         var descriptions = comment.Elements("para").ToArray();
         if (descriptions.Length > 0) {
@@ -527,6 +511,13 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning)
         }
 
         var comment = reader.GetComments(type);
+        if (comment == null) {
+            if ((warnings & Warnings.RequireTypeDescription) != 0 && _processedTypes.Add(type)) {
+                reportWarning(type, "Missing type description.");
+            }
+            return null;
+        }
+
         return ParseDescription(comment, w => reportWarning(type, w));
     }
 

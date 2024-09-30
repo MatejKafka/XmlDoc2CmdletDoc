@@ -33,18 +33,18 @@ public static class Engine {
     public static EngineExitCode GenerateHelp(Options options) {
         try {
             var warnings = new List<Tuple<MemberInfo, string>>();
-            ReportWarning reportWarning = options.IgnoreMissingDocs
+            ReportWarning reportWarning = options.Warnings == Warnings.IgnoreAll
                     ? (_, _) => {}
                     : (target, warningText) => warnings.Add(Tuple.Create(target, warningText));
 
             var (loaderRet, assembly) = LoadAssembly(options);
             using var loader = loaderRet;
 
-            var commentReader = LoadComments(options, reportWarning);
+            var commentReader = LoadComments(options);
             var cmdletTypes = GetCommands(assembly);
 
 
-            var generator = new HelpGenerator(commentReader, reportWarning);
+            var generator = new HelpGenerator(commentReader, reportWarning, options.Warnings);
             var document = new XDocument(new XDeclaration("1.0", "utf-8", null),
                     generator.GenerateHelpXml(cmdletTypes, options.IsExcludedParameterSetName));
 
@@ -88,9 +88,9 @@ public static class Engine {
             var writer = options.TreatWarningsAsErrors ? Console.Error : Console.Out;
             writer.WriteLine("Warnings:");
             foreach (var group in groups) {
-                writer.WriteLine("    {0}:", group.Key);
-                foreach (var warningText in group.Distinct()) {
-                    writer.WriteLine("        {0}", warningText);
+                writer.WriteLine($"    {group.Key}:");
+                foreach (var warningText in group) {
+                    writer.WriteLine($"        {warningText}");
                 }
             }
             if (options.TreatWarningsAsErrors) {
@@ -137,19 +137,15 @@ public static class Engine {
     /// Obtains an XML Doc comment reader for the assembly in the specified <paramref name="options"/>.
     /// </summary>
     /// <param name="options">The options.</param>
-    /// <param name="reportWarning">Function used to log warnings.</param>
     /// <returns>A comment reader for the assembly in the <paramref name="options"/>.</returns>
-    private static ICommentReader LoadComments(Options options, ReportWarning reportWarning) {
+    private static ICommentReader LoadComments(Options options) {
         var docCommentsPath = options.DocCommentsPath;
         if (!File.Exists(docCommentsPath)) {
             throw new EngineException(EngineExitCode.AssemblyCommentsNotFound,
                     "Assembly comments file not found: " + docCommentsPath);
         }
         try {
-            return new CachingCommentReader(
-                    new RewritingCommentReader(
-                            new LoggingCommentReader(
-                                    new XmlDocCommentReader(docCommentsPath), reportWarning)));
+            return new CachingCommentReader(new RewritingCommentReader(new XmlDocCommentReader(docCommentsPath)));
         } catch (Exception exception) {
             throw new EngineException(EngineExitCode.DocCommentsLoadError,
                     "Failed to load XML Doc comments from file: " + docCommentsPath,

@@ -1,13 +1,14 @@
 # MatejKafka.XmlDoc2CmdletDoc
 
-Fork of [XmlDoc2CmdletDoc](https://github.com/red-gate/XmlDoc2CmdletDoc), retargeted to .NET 8, with support for loading
+Fork of [XmlDoc2CmdletDoc](https://github.com/red-gate/XmlDoc2CmdletDoc) with more concise syntax, retargeted to .NET 8, with support for loading
 dependencies from NuGet cache for local development builds.
+
+0.4.x versions should be backwards compatible with the original Redgate project.
+Newer minor versions (v0.5.x and higher) use a more compact, backwards incompatible syntax, described below.
 
 ---
 
 It's easy to write good help documentation for PowerShell *script* modules (those written in the PowerShell script language). You just write specially formatted comments alongside the source code for your cmdlets, and the PowerShell host automatically uses those comments to provide good inline help for your cmdlets' users. **XmlDoc2CmdletDoc** brings this same functionality to PowerShell *binary* modules (those written in C# or VB.NET). You no longer need to use *CmdletHelpEditor* or *PowerShell Cmdlet Help Editor* to manually edit a separate help file. Instead, this tool will automatically generate your PowerShell module's help file from XML Doc comments in your source code.
-
-For more details, [Michael Sorens](https://www.simple-talk.com/author/michael-sorens/) has written a [comprehensive guide to documenting your PowerShell binary cmdlets](https://www.simple-talk.com/dotnet/software-tools/documenting-your-powershell-binary-cmdlets/) using XmlDoc2CmdletDoc. However, do note that the article is a bit outdated, since some changes to the docstring structure have been made in v0.5.0.
 
 ## Usage
 
@@ -35,11 +36,12 @@ Alternatively, paste the following snippet into your .csproj file:
 Optionally, you can pass extra arguments by adding the following property to a `<PropertyGroup>`:
 
 ```xml
-<XmlDoc2CmdletDocArguments>-strict -ignoreMissing -excludeParameterSets parameterSetToExclude1,parameterSetToExclude2</XmlDoc2CmdletDocArguments>
+<XmlDoc2CmdletDocArguments>-strict -ignoreMissing -ignoreOptional -excludeParameterSets parameterSetToExclude1,parameterSetToExclude2</XmlDoc2CmdletDocArguments>
 ```
 
 - `-strict`: Fail the build if any cmdlet is missing a part of the documentation.
 - `-ignoreMissing`: Do not print a list of all cmdlets with missing docstrings.
+- `-ignoreOptional`: Do not warn on missing parameter descriptions. Warn on missing cmdlet synopses and type descriptions.
 - `-excludeParameterSets`: A comma-separated list of parameters sets to exclude from the documentation.
 
 ## Examples

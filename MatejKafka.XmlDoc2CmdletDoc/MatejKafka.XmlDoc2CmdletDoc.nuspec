@@ -8,6 +8,7 @@
     <owners>Matej Kafka</owners>
     <projectUrl>https://github.com/MatejKafka/XmlDoc2CmdletDoc</projectUrl>
     <license type="file">license\LICENSE.md</license>
+    <readme>docs\README.md</readme>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <summary>Generates help documentation for binary PowerShell modules from XML Doc comments.</summary>
     <description>Tool used to generate .dll-Help.xml help files for binary PowerShell modules from XML Doc comments. Licensed under the terms of the new 3-clause BSD license.</description>
@@ -23,5 +24,6 @@
     <file src="$PublishDir$\net8.0\**\*" exclude="**\*.pdb;**\*.xml" target="tools" />
     <file src="MatejKafka.XmlDoc2CmdletDoc.targets" target="build" />
     <file src="..\LICENSE.md" target="license" />
+    <file src="..\README.md" target="docs" />
   </files>
 </package>

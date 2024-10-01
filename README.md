@@ -134,19 +134,20 @@ public class TestMyExampleCommand : Cmdlet {
 
 ### Examples
 
-Cmdlet examples are defined using `<example>` elements in the XML doc comment for the cmdlet class. 
-
-The example's code body is taken from the `<code>` element. Any `<para>` elements before the `<code>` element become the example's introduction. Any `<para>` elements  after the `<code>` element become the example's remarks. The introduction and remarks are both optional. 
-
-To add multiple cmdlet examples, use multiple `<example>` elements.
+Cmdlet examples are defined using `<example>` elements in the XML doc comment for the cmdlet class. To add multiple
+cmdlet examples, use multiple `<example>` elements. Each example may have the following elements:
+- `<summary>`: optional, contains the title of the example; in the resulting help, it is rendered as `    ------ Example 1: {title} ------`
+- `<prefix>`: optional, short prefix placed inline before the code block, such as a shell prompt (e.g. `PS> `); PowerShell docs call this an introduction
+- `<code>`: the example itself, as a single code block
+- `<para>`: optional, one or more paragraphs, containing a textual description of the example, placed below the code block
 
 ```c#
 /// <example>
-///   <para>This is part of the example's introduction.</para>
-///   <para>This is also part of the example's introduction.</para>
-///   <code>Test-MyExample | Wrte-Host</code>
-///   <para>This is part of the example's remarks.</para>
-///   <para>This is also part of the example's remarks.</para>
+///   <summary>Run the test command and render output</summary>
+///   <prefix>PS> </prefix>
+///   <code>Test-MyExample | Write-Host</code>
+///   <para>This is part of the example's description (remarks).</para>
+///   <para>This is another paragraph of the description.</para>
 /// </example>
 [Cmdlet("Test", "MyExample")]
 public class TestMyExampleCommand : Cmdlet {
@@ -154,7 +155,16 @@ public class TestMyExampleCommand : Cmdlet {
 }
 ```
 
+Resulting help text:
+```
+    ----------  Example 1: Run the test command and render output  ----------
 
+    PS> Test-MyExample | Write-Host
+
+    This is part of the example's description (remarks).
+
+    This is another paragraph of the description.
+```
 
 ### Related links
 

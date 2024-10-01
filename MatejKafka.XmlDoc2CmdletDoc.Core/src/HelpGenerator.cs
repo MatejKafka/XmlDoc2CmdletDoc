@@ -320,34 +320,52 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
     /// <param name="reportWarning">Used to log any warnings.</param>
     /// <returns>An example element.</returns>
     private static XElement ExampleItem(XElement exampleElement, int exampleNumber, Action<string> reportWarning) {
-        var items = exampleElement.XPathSelectElements("para | code").ToList();
-        var intros = items.TakeWhile(x => x.Name == "para").ToList();
-        var code = items.SkipWhile(x => x.Name == "para").TakeWhile(x => x.Name == "code").FirstOrDefault();
-        var paras = items.SkipWhile(x => x.Name == "para").SkipWhile(x => x.Name == "code").ToList();
+        var title = exampleElement.Element("summary");
+        var prefixes = exampleElement.Elements("prefix").ToList();
+        var codes = exampleElement.Elements("code").ToList();
+        var descriptions = exampleElement.Elements("para").ToList();
 
+        if (prefixes.Count > 1) {
+            reportWarning($"Multiple prefixes in example {exampleNumber} are currently not supported: "
+                    + string.Join(", ", prefixes.Select(p => $"`<prefix>{p.Value}</prefix>`")));
+        }
+        var prefix = prefixes.SingleOrDefault();
+
+        if (codes.Count > 1) {
+            reportWarning($"Multiple code blocks in example {exampleNumber} are currently not supported: "
+                          + string.Join(", ", codes.Select(c => $"`<code>{c.Value}</code>`")));
+        }
+        var code = codes.SingleOrDefault();
+
+        if (prefix != null && code == null) {
+            reportWarning($"Missing <code> block after a <prefix> in example {exampleNumber}.");
+        }
+
+        var exampleTitle = $"Example {exampleNumber}";
+        if (title != null) {
+            exampleTitle += $": {title.Value}";
+        }
         var example = new XElement(CommandNs + "example",
-                new XElement(MamlNs + "title", $"----------  EXAMPLE {exampleNumber}  ----------"));
+                new XElement(MamlNs + "title", $"----------  {exampleTitle}  ----------"));
 
         var isEmpty = true;
-        if (intros.Any()) {
-            var introduction = new XElement(MamlNs + "introduction");
-            intros.ForEach(intro => introduction.Add(new XElement(MamlNs + "para", RenderParagraph(intro))));
-            example.Add(introduction);
+        if (prefix != null) {
+            example.Add(new XElement(MamlNs + "introduction", new XElement(MamlNs + "para", prefix.Value)));
             isEmpty = false;
         }
         if (code != null) {
             example.Add(new XElement(DevNs + "code", TidyCode(code.Value)));
             isEmpty = false;
         }
-        if (paras.Any()) {
+        if (descriptions.Any()) {
             var remarks = new XElement(DevNs + "remarks");
-            paras.ForEach(para => remarks.Add(new XElement(MamlNs + "para", RenderParagraph(para))));
+            descriptions.ForEach(para => remarks.Add(new XElement(MamlNs + "para", RenderParagraph(para))));
             example.Add(remarks);
             isEmpty = false;
         }
 
         if (isEmpty) {
-            reportWarning($"No para or code elements found for example {exampleNumber}.");
+            reportWarning($"No <prefix>, <code> or <para> elements found for example {exampleNumber}.");
         }
 
         return example;

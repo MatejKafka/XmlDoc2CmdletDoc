@@ -44,14 +44,15 @@ Optionally, you can pass extra arguments by adding the following property to a `
 - `-ignoreOptional`: Do not warn on missing parameter descriptions. Warn on missing cmdlet synopses and type descriptions.
 - `-excludeParameterSets`: A comma-separated list of parameters sets to exclude from the documentation.
 
-## Examples
+## Documentation
 
-Here are some examples of how to document your cmdlets:
-
+Currently, there is no comprehensive documentation. However, the following examples should illustrate all available
+features of the tool:
 
 ### Cmdlet synopsis and description
 
-The cmdlet's synopsis is defined using the `<summary>` element, and description is defined using `<para>` elements in the cmdlet class's XML doc comment. You can use multiple `<para>` elements for the description.
+The cmdlet's synopsis is defined using the `<summary>` element, and description is defined using `<para>` elements in
+the cmdlet class's XML doc comment. You can use multiple `<para>` elements for the description.
 
 ```c#
 /// <summary>This is the cmdlet synopsis.</summary>
@@ -62,10 +63,6 @@ public class TestMyExampleCommand : Cmdlet {
     ...
 }
 ```
-
-For guidance on writing the cmdlet synopsis, see http://msdn.microsoft.com/en-us/library/bb525429.aspx.
-For guidance on writing the cmdlet description, see http://msdn.microsoft.com/en-us/library/bb736332.aspx.
-
 
 ### Parameter description
 
@@ -85,9 +82,6 @@ public class TestMyExampleCommand : Cmdlet {
 }
 
 ```
-
-For guidance on writing the parameter description, see http://msdn.microsoft.com/en-us/library/bb736339.aspx.
-
 
 ### Type description
 
@@ -109,7 +103,6 @@ public class MyType { ... }
 /// <para>This is also part of the type description.</para>
 public class MyType2 { ... }
 ```
-
 
 ### Notes
 
@@ -139,9 +132,6 @@ public class TestMyExampleCommand : Cmdlet {
 }
 ```
 
-For guidance on writing cmdlet notes, see http://msdn.microsoft.com/en-us/library/bb736330.aspx.
-
-
 ### Examples
 
 Cmdlet examples are defined using `<example>` elements in the XML doc comment for the cmdlet class. 
@@ -164,7 +154,6 @@ public class TestMyExampleCommand : Cmdlet {
 }
 ```
 
-For guidance on writing cmdlet examples, see http://msdn.microsoft.com/en-us/library/bb736335.aspx.
 
 
 ### Related links
@@ -179,8 +168,6 @@ public class TestMyExampleCommand : Cmdlet {
     ...
 }
 ```
-
-For guidance on writing related links, see http://msdn.microsoft.com/en-us/library/bb736334.aspx.
 
 ## Building XmlDoc2CmdletDoc
 

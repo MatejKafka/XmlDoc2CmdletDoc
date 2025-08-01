@@ -37,10 +37,10 @@ public static class Engine {
                     ? (_, _) => {}
                     : (target, warningText) => warnings.Add(Tuple.Create(target, warningText));
 
-            var (loaderRet, assembly) = LoadAssembly(options);
+            var (loaderRet, assembly) = LoadAssembly(options.AssemblyPath);
             using var loader = loaderRet;
 
-            var commentReader = LoadComments(options);
+            var commentReader = LoadComments(options.DocCommentsPath);
             var cmdletTypes = GetCommands(assembly);
 
 
@@ -48,7 +48,7 @@ public static class Engine {
             var document = new XDocument(new XDeclaration("1.0", "utf-8", null),
                     generator.GenerateHelpXml(cmdletTypes, options.IsExcludedParameterSetName));
 
-            HandleWarnings(options, warnings, assembly);
+            HandleWarnings(warnings, assembly, warningsAsErrors:options.TreatWarningsAsErrors);
 
             using var stream = new FileStream(options.OutputHelpFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
             using var writer = new StreamWriter(stream, Encoding.UTF8);
@@ -70,12 +70,12 @@ public static class Engine {
     /// <summary>
     /// Handles the list of warnings generated once the cmdlet help XML document has been generated.
     /// </summary>
-    /// <param name="options">The options.</param>
     /// <param name="warnings">The warnings generated during the creation of the cmdlet help XML document. Each tuple
     /// consists of the type to which the warning pertains, and the text of the warning.</param>
     /// <param name="targetAssembly">The assembly of the PowerShell module being documented.</param>
-    private static void HandleWarnings(Options options, IEnumerable<Tuple<MemberInfo, string>> warnings,
-            Assembly targetAssembly) {
+    /// <param name="warningsAsErrors">If passed, any warnings result in an exception.</param>
+    private static void HandleWarnings(IEnumerable<Tuple<MemberInfo, string>> warnings,
+            Assembly targetAssembly, bool warningsAsErrors) {
         var groups = warnings.Where(tuple => {
                     // Exclude warnings about types outside the assembly being documented.
                     var type = tuple.Item1 as Type ?? tuple.Item1.DeclaringType;
@@ -85,7 +85,7 @@ public static class Engine {
                 .OrderBy(group => group.Key)
                 .ToList();
         if (groups.Any()) {
-            var writer = options.TreatWarningsAsErrors ? Console.Error : Console.Out;
+            var writer = warningsAsErrors ? Console.Error : Console.Out;
             writer.WriteLine("Warnings:");
             foreach (var group in groups) {
                 writer.WriteLine($"    {group.Key}:");
@@ -93,7 +93,7 @@ public static class Engine {
                     writer.WriteLine($"        {warningText}");
                 }
             }
-            if (options.TreatWarningsAsErrors) {
+            if (warningsAsErrors) {
                 throw new EngineException(EngineExitCode.WarningsAsErrors,
                         "Failing due to the occurence of one or more warnings");
             }
@@ -111,44 +111,35 @@ public static class Engine {
                 : $"{GetFullyQualifiedName(memberInfo.DeclaringType)}.{memberInfo.Name}";
     }
 
-    /// <summary>
-    /// Loads the assembly indicated in the specified <paramref name="options"/>.
-    /// </summary>
-    /// <param name="options">The options.</param>
-    /// <returns>The assembly indicated in the <paramref name="options"/>.</returns>
-    private static (AssemblyDependencyResolver, Assembly) LoadAssembly(Options options) {
-        if (!File.Exists(options.AssemblyPath)) {
+    private static (AssemblyDependencyResolver, Assembly) LoadAssembly(string assemblyPath) {
+        if (!File.Exists(assemblyPath)) {
             throw new EngineException(EngineExitCode.AssemblyNotFound,
-                    "Assembly file not found: " + options.AssemblyPath);
+                    "Assembly file not found: " + assemblyPath);
         }
 
         AssemblyDependencyResolver loader = null;
         try {
-            loader = new AssemblyDependencyResolver(options.AssemblyPath);
+            loader = new AssemblyDependencyResolver(assemblyPath);
             return (loader, loader.Assembly);
         } catch (Exception exception) {
             loader?.Dispose();
             throw new EngineException(EngineExitCode.AssemblyLoadError,
-                    "Failed to load assembly from file: " + options.AssemblyPath, exception);
+                    "Failed to load assembly from file: " + assemblyPath, exception);
         }
     }
 
-    /// <summary>
-    /// Obtains an XML Doc comment reader for the assembly in the specified <paramref name="options"/>.
-    /// </summary>
-    /// <param name="options">The options.</param>
-    /// <returns>A comment reader for the assembly in the <paramref name="options"/>.</returns>
-    private static ICommentReader LoadComments(Options options) {
-        var docCommentsPath = options.DocCommentsPath;
-        if (!File.Exists(docCommentsPath)) {
+    /// Returns an XML doc comment reader for the passed path.
+    /// The passed path should point to the .xml file next to the generated assembly.
+    private static ICommentReader LoadComments(string docXmlPath) {
+        if (!File.Exists(docXmlPath)) {
             throw new EngineException(EngineExitCode.AssemblyCommentsNotFound,
-                    "Assembly comments file not found: " + docCommentsPath);
+                    "Assembly comments file not found: " + docXmlPath);
         }
         try {
-            return new CachingCommentReader(new RewritingCommentReader(new XmlDocCommentReader(docCommentsPath)));
+            return new CachingCommentReader(new RewritingCommentReader(new XmlDocCommentReader(docXmlPath)));
         } catch (Exception exception) {
             throw new EngineException(EngineExitCode.DocCommentsLoadError,
-                    "Failed to load XML Doc comments from file: " + docCommentsPath,
+                    "Failed to load XML Doc comments from file: " + docXmlPath,
                     exception);
         }
     }

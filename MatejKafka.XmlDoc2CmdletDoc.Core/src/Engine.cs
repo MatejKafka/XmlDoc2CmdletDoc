@@ -25,41 +25,28 @@ public static class Engine {
     /// <param name="options">Defines the locations of the input assembly, the input XML doc comments file for the
     /// assembly, and where the cmdlet XML help file should be written to.</param>
     /// <returns>A code indicating the result of the help generation.</returns>
-    public static EngineExitCode GenerateHelp(Options options) {
-        try {
-            var (loaderRet, assembly) = LoadAssembly(options.AssemblyPath);
-            using var loader = loaderRet;
+    public static void GenerateHelp(Options options) {
+        var (loaderRet, assembly) = LoadAssembly(options.AssemblyPath);
+        using var loader = loaderRet;
 
-            var commentReader = LoadComments(options.DocCommentsPath);
-            var cmdletTypes = GetCommands(assembly);
+        var commentReader = LoadComments(options.DocCommentsPath);
+        var cmdletTypes = GetCommands(assembly);
 
 
-            var warnings = new List<Issue>();
-            var generator = new HelpGenerator(commentReader, options.Warnings);
-            if (options.Warnings != Warnings.IgnoreAll) {
-                generator.OnWarning += warnings.Add;
-            }
-
-            var document = new XDocument(new XDeclaration("1.0", "utf-8", null),
-                    generator.GenerateHelpXml(cmdletTypes, options.IsExcludedParameterSetName));
-
-            HandleWarnings(warnings, assembly, options.TreatWarningsAsErrors);
-
-            using var stream = new FileStream(options.OutputHelpFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            using var writer = new StreamWriter(stream, Encoding.UTF8);
-            document.Save(writer);
-
-            return EngineExitCode.Success;
-        } catch (Exception exception) {
-            Console.Error.WriteLine(exception);
-            if (exception is ReflectionTypeLoadException typeLoadException) {
-                foreach (var loaderException in typeLoadException.LoaderExceptions) {
-                    Console.Error.WriteLine("Loader exception: {0}", loaderException);
-                }
-            }
-            var engineException = exception as EngineException;
-            return engineException?.ExitCode ?? EngineExitCode.UnhandledException;
+        var warnings = new List<Issue>();
+        var generator = new HelpGenerator(commentReader, options.Warnings);
+        if (options.Warnings != Warnings.IgnoreAll) {
+            generator.OnWarning += warnings.Add;
         }
+
+        var document = new XDocument(new XDeclaration("1.0", "utf-8", null),
+                generator.GenerateHelpXml(cmdletTypes, options.IsExcludedParameterSetName));
+
+        HandleWarnings(warnings, assembly, options.TreatWarningsAsErrors);
+
+        using var stream = new FileStream(options.OutputHelpFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+        using var writer = new StreamWriter(stream, Encoding.UTF8);
+        document.Save(writer);
     }
 
     /// <summary>
@@ -90,11 +77,6 @@ public static class Engine {
                     Console.Error.WriteLine($"{group.Key}: {(strictMode ? "error" : "warning")} PS{(int) area:D3}: {text}");
                 }
             }
-
-            if (strictMode) {
-                throw new EngineException(EngineExitCode.WarningsAsErrors,
-                        "Encountered issues while generating PowerShell documentation and strict mode is enabled, see above.");
-            }
         }
     }
 
@@ -122,7 +104,7 @@ public static class Engine {
         } catch (Exception exception) {
             loader?.Dispose();
             throw new EngineException(EngineExitCode.AssemblyLoadError,
-                    "Failed to load assembly from file: " + assemblyPath, exception);
+                    $"Failed to load assembly from '{assemblyPath}': {exception.Message}", exception);
         }
     }
 
@@ -131,13 +113,14 @@ public static class Engine {
     private static ICommentReader LoadComments(string docXmlPath) {
         if (!File.Exists(docXmlPath)) {
             throw new EngineException(EngineExitCode.AssemblyCommentsNotFound,
-                    "Assembly comments file not found: " + docXmlPath);
+                    "XML documentation not found, is `<GenerateDocumentationFile>` enabled? Expected path: " +
+                    docXmlPath);
         }
         try {
             return new CachingCommentReader(new RewritingCommentReader(new XmlDocCommentReader(docXmlPath)));
         } catch (Exception exception) {
             throw new EngineException(EngineExitCode.DocCommentsLoadError,
-                    "Failed to load XML Doc comments from file: " + docXmlPath,
+                    $"Failed to load XML docs from '{docXmlPath}: {exception.Message}",
                     exception);
         }
     }

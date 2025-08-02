@@ -10,6 +10,7 @@
     </PropertyGroup>
     <Target Name="XmlDoc2CmdletDoc" BeforeTargets="PostBuildEvent" Inputs="$(TargetPath)" Outputs="$(TargetPath)-Help.xml">
         <!-- use roll-forward so that this target works even on .NET 9 and later, without needing to ship a self-contained exe -->
-        <Exec Command='dotnet --roll-forward Major "$(MSBuildThisFileDirectory)..\tools\MatejKafka.XmlDoc2CmdletDoc.dll" $(XmlDoc2CmdletDocArguments) "$(TargetPath)"' />
+        <!-- ignore exit code, we handle all errors internally and print MSBuild errors for them -->
+        <Exec Command='dotnet --roll-forward Major "$(MSBuildThisFileDirectory)..\tools\MatejKafka.XmlDoc2CmdletDoc.dll" $(XmlDoc2CmdletDocArguments) "$(TargetPath)"' IgnoreExitCode="true"/>
     </Target>
 </Project>

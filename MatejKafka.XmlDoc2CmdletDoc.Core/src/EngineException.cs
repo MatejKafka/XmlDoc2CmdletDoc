@@ -17,7 +17,7 @@ public class EngineException : ApplicationException {
     /// <param name="exitCode">The exit code associated with the error.</param>
     /// <param name="message">An error message associated wih the error. </param>
     /// <param name="innerException">An optional inner exception associated with the error.</param>
-    public EngineException(EngineExitCode exitCode, string message, Exception innerException = null)
+    public EngineException(EngineExitCode exitCode, string message, Exception? innerException = null)
             : base(message, innerException) {
         ExitCode = exitCode;
     }

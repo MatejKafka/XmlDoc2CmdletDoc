@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable disable
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,13 +12,6 @@ using XmlDoc2CmdletDoc.Core.Comments;
 using XmlDoc2CmdletDoc.Core.Domain;
 
 namespace XmlDoc2CmdletDoc.Core;
-
-/// <summary>
-/// Delegate used when reporting a warning against a reflected member.
-/// </summary>
-/// <param name="target">The reflected member to which the warning pertains.</param>
-/// <param name="warningText">The warning message.</param>
-public delegate void ReportWarning(MemberInfo target, string warningText);
 
 /// <summary>
 /// <para>Does all the work of generating the XML help file for an assembly. See <see cref="GenerateHelp"/>.</para>
@@ -32,11 +27,6 @@ public static class Engine {
     /// <returns>A code indicating the result of the help generation.</returns>
     public static EngineExitCode GenerateHelp(Options options) {
         try {
-            var warnings = new List<Tuple<MemberInfo, string>>();
-            ReportWarning reportWarning = options.Warnings == Warnings.IgnoreAll
-                    ? (_, _) => {}
-                    : (target, warningText) => warnings.Add(Tuple.Create(target, warningText));
-
             var (loaderRet, assembly) = LoadAssembly(options.AssemblyPath);
             using var loader = loaderRet;
 
@@ -44,11 +34,16 @@ public static class Engine {
             var cmdletTypes = GetCommands(assembly);
 
 
-            var generator = new HelpGenerator(commentReader, reportWarning, options.Warnings);
+            var warnings = new List<Issue>();
+            var generator = new HelpGenerator(commentReader, options.Warnings);
+            if (options.Warnings != Warnings.IgnoreAll) {
+                generator.OnWarning += warnings.Add;
+            }
+
             var document = new XDocument(new XDeclaration("1.0", "utf-8", null),
                     generator.GenerateHelpXml(cmdletTypes, options.IsExcludedParameterSetName));
 
-            HandleWarnings(warnings, assembly, warningsAsErrors:options.TreatWarningsAsErrors);
+            HandleWarnings(warnings, assembly, options.TreatWarningsAsErrors);
 
             using var stream = new FileStream(options.OutputHelpFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
             using var writer = new StreamWriter(stream, Encoding.UTF8);
@@ -70,32 +65,35 @@ public static class Engine {
     /// <summary>
     /// Handles the list of warnings generated once the cmdlet help XML document has been generated.
     /// </summary>
-    /// <param name="warnings">The warnings generated during the creation of the cmdlet help XML document. Each tuple
+    /// <param name="issues">The warnings generated during the creation of the cmdlet help XML document. Each tuple
     /// consists of the type to which the warning pertains, and the text of the warning.</param>
     /// <param name="targetAssembly">The assembly of the PowerShell module being documented.</param>
-    /// <param name="warningsAsErrors">If passed, any warnings result in an exception.</param>
-    private static void HandleWarnings(IEnumerable<Tuple<MemberInfo, string>> warnings,
-            Assembly targetAssembly, bool warningsAsErrors) {
-        var groups = warnings.Where(tuple => {
-                    // Exclude warnings about types outside the assembly being documented.
-                    var type = tuple.Item1 as Type ?? tuple.Item1.DeclaringType;
-                    return type != null && type.Assembly == targetAssembly;
-                })
-                .GroupBy(tuple => GetFullyQualifiedName(tuple.Item1), tuple => tuple.Item2)
+    /// <param name="strictMode">If true, issues are reported to MSBuild as errors instead of warnings.</param>
+    private static void HandleWarnings(IEnumerable<Issue> issues, Assembly targetAssembly, bool strictMode) {
+        // exclude warnings about types outside the assembly being documented
+        issues = issues.Where(issue => {
+            var type = issue.Member as Type ?? issue.Member.DeclaringType;
+            return type != null && type.Assembly == targetAssembly;
+        });
+
+        // group by the type
+        var groups = issues
+                .GroupBy(issue => GetFullyQualifiedName(issue.Member), issue => (issue.Area, issue.Description))
                 .OrderBy(group => group.Key)
                 .ToList();
+
         if (groups.Any()) {
-            var writer = warningsAsErrors ? Console.Error : Console.Out;
-            writer.WriteLine("Warnings:");
+            // generate warnings in the format MSBuild expects
+            // https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-diagnostic-format-for-tasks?view=vs-2022
             foreach (var group in groups) {
-                writer.WriteLine($"    {group.Key}:");
-                foreach (var warningText in group) {
-                    writer.WriteLine($"        {warningText}");
+                foreach (var (area, text) in group) {
+                    Console.Error.WriteLine($"{group.Key}: {(strictMode ? "error" : "warning")} PS{(int) area:D3}: {text}");
                 }
             }
-            if (warningsAsErrors) {
+
+            if (strictMode) {
                 throw new EngineException(EngineExitCode.WarningsAsErrors,
-                        "Failing due to the occurence of one or more warnings");
+                        "Encountered issues while generating PowerShell documentation and strict mode is enabled, see above.");
             }
         }
     }

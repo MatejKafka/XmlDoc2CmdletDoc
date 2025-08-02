@@ -1,5 +1,4 @@
-﻿#nullable enable
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +14,18 @@ using XmlDoc2CmdletDoc.Core.Domain;
 
 namespace XmlDoc2CmdletDoc.Core;
 
-internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning, Warnings warnings) {
+/// Issue area, used to number the MSBuild warnings.
+internal enum IssueArea {
+    CmdletSynopsis = 1,
+    ParameterDescription,
+    ParameterDefaultValue,
+    Example,
+    TypeDescription,
+}
+
+internal record struct Issue(MemberInfo Member, IssueArea Area, string Description);
+
+internal class HelpGenerator(ICommentReader reader, Warnings warnings) {
     private static readonly XNamespace MshNs = XNamespace.Get("http://msh");
     private static readonly XNamespace MamlNs = XNamespace.Get("http://schemas.microsoft.com/maml/2004/10");
     private static readonly XNamespace CommandNs = XNamespace.Get("http://schemas.microsoft.com/maml/dev/command/2004/10");
@@ -32,6 +42,12 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
         manager.AddNamespace("command", CommandNs.NamespaceName);
         manager.AddNamespace("dev", DevNs.NamespaceName);
         Resolver = manager;
+    }
+
+    public event Action<Issue>? OnWarning;
+
+    private void Warn(MemberInfo member, IssueArea area, string description) {
+        OnWarning?.Invoke(new(member, area, description));
     }
 
     /// <summary>
@@ -59,7 +75,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
         var cmdletType = command.CmdletType;
         var comments = reader.GetComments(cmdletType);
         if (comments == null) {
-            reportWarning(command.CmdletType, "No top-level docstring comment found.");
+            Warn(command.CmdletType, IssueArea.CmdletSynopsis, "No top-level docstring comment found.");
         }
 
         return new XElement(CommandNs + "command",
@@ -263,11 +279,11 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
         var summary = comments.Element("summary");
         if (summary == null) {
             if ((warnings & Warnings.RequireCmdletSynopsis) != 0) {
-                reportWarning(command.CmdletType, "Missing synopsis (<summary> tag).");
+                Warn(command.CmdletType, IssueArea.CmdletSynopsis, "Missing synopsis (<summary> tag).");
             }
             return null;
         }
-        return ParseDescription(summary, w => reportWarning(command.CmdletType, w), "<summary>");
+        return ParseDescription(summary, w => Warn(command.CmdletType, IssueArea.CmdletSynopsis, w), "<summary>");
     }
 
     /// <summary>
@@ -306,7 +322,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
         var exampleNumber = 1;
         foreach (var xmlDocExample in xmlDocExamples) {
             examples.Add(ExampleItem(xmlDocExample, exampleNumber,
-                    warningText => reportWarning(command.CmdletType, warningText)));
+                    warningText => Warn(command.CmdletType, IssueArea.Example, warningText)));
             exampleNumber++;
         }
         return exampleNumber == 1 ? null : examples;
@@ -327,7 +343,7 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
 
         if (prefixes.Count > 1) {
             reportWarning($"Multiple prefixes in example {exampleNumber} are currently not supported: "
-                    + string.Join(", ", prefixes.Select(p => $"`<prefix>{p.Value}</prefix>`")));
+                          + string.Join(", ", prefixes.Select(p => $"`<prefix>{p.Value}</prefix>`")));
         }
         var prefix = prefixes.SingleOrDefault();
 
@@ -455,12 +471,13 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
 
         if (comment == null) {
             if ((warnings & Warnings.RequireParameterDescription) != 0) {
-                reportWarning(command.CmdletType, $"Missing parameter description for parameter '{rp.MemberInfo.Name}'.");
+                Warn(command.CmdletType, IssueArea.ParameterDescription,
+                        $"Missing parameter description for parameter '{rp.MemberInfo.Name}'.");
             }
             return null;
         }
 
-        var description = ParseDescription(comment, w => reportWarning(rp.MemberInfo, w));
+        var description = ParseDescription(comment, w => Warn(rp.MemberInfo, IssueArea.ParameterDescription, w));
 
         if (parameter.EnumValues.Any()) {
             description ??= new XElement(MamlNs + "description");
@@ -504,7 +521,8 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
     /// <param name="parameter">The parameter.</param>
     /// <returns>A default value element for the parameter's default value, or <em>null</em> if a default value could not be obtained.</returns>
     private XElement? ParameterDefaultValue(Parameter parameter) {
-        var defaultValue = parameter.GetDefaultValue(reportWarning); // TODO: Get the default value from the doc comments?
+        // TODO: Get the default value from the doc comments?
+        var defaultValue = parameter.GetDefaultValue((m, w) => Warn(m, IssueArea.ParameterDefaultValue, w));
         if (defaultValue != null) {
             if (defaultValue is IEnumerable enumerable and not string) {
                 var content = string.Join(", ", enumerable.Cast<object>().Select(element => element.ToString()));
@@ -531,12 +549,12 @@ internal class HelpGenerator(ICommentReader reader, ReportWarning reportWarning,
         var comment = reader.GetComments(type);
         if (comment == null) {
             if ((warnings & Warnings.RequireTypeDescription) != 0 && _processedTypes.Add(type)) {
-                reportWarning(type, "Missing type description.");
+                Warn(type, IssueArea.TypeDescription, "Missing type description.");
             }
             return null;
         }
 
-        return ParseDescription(comment, w => reportWarning(type, w));
+        return ParseDescription(comment, w => Warn(type, IssueArea.TypeDescription, w));
     }
 
     /// <summary>

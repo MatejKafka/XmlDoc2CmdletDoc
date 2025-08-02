@@ -6,49 +6,33 @@ using System.Reflection;
 
 namespace XmlDoc2CmdletDoc.Core.Domain;
 
-/// <summary>
 /// Represents a single parameter of a cmdlet.
-/// </summary>
 public abstract class Parameter {
-    /// <summary>
     /// The type of the cmdlet this parameter is defined on.
-    /// </summary>
-    protected readonly Type _cmdletType;
+    protected readonly Type CmdletType;
     private readonly IEnumerable<ParameterAttribute> _attributes;
 
-    /// <summary>
     /// Creates a new instance.
-    /// </summary>
     /// <param name="cmdletType">The type of the cmdlet the parameter belongs to.</param>
     /// <param name="attributes">The parameter attributes of the cmdlet.</param>
-    public Parameter(Type cmdletType, IEnumerable<ParameterAttribute> attributes) {
-        _cmdletType = cmdletType ?? throw new ArgumentNullException(nameof(cmdletType));
+    protected Parameter(Type cmdletType, IEnumerable<ParameterAttribute> attributes) {
+        CmdletType = cmdletType;
         _attributes = attributes;
     }
 
-    /// <summary>
     /// The name of the parameter.
-    /// </summary>
     public abstract string Name {get;}
 
-    /// <summary>
     /// The type of the parameter.
-    /// </summary>
     public abstract Type ParameterType {get;}
 
-    /// <summary>
     /// The type of this parameter's member - method, constructor, property, and so on.
-    /// </summary>
     public abstract MemberTypes MemberType {get;}
 
-    /// <summary>
-    /// Indicates whether or not the parameter supports globbing.
-    /// </summary>
+    /// Indicates whether the parameter supports globbing.
     public abstract bool SupportsGlobbing {get;}
 
-    /// <summary>
     /// The names of the parameter sets that the parameter belongs to.
-    /// </summary>
     public IEnumerable<string> ParameterSetNames => _attributes.Select(attr => attr.ParameterSetName);
 
     private IEnumerable<ParameterAttribute> GetAttributes(string parameterSetName) =>
@@ -57,20 +41,14 @@ public abstract class Parameter {
                     : _attributes.Where(attr => attr.ParameterSetName == parameterSetName ||
                                                 attr.ParameterSetName == ParameterAttribute.AllParameterSets);
 
-    /// <summary>
-    /// Indicates whether or not the parameter is mandatory.
-    /// </summary>
+    /// Indicates whether the parameter is mandatory.
     public bool IsRequired(string parameterSetName) => GetAttributes(parameterSetName).Any(attr => attr.Mandatory);
 
-    /// <summary>
-    /// Indicates whether or not the parameter takes its value from the pipeline input.
-    /// </summary>
+    /// Indicates whether the parameter takes its value from the pipeline input.
     public bool IsPipeline(string parameterSetName) =>
             GetAttributes(parameterSetName).Any(attr => attr.ValueFromPipeline || attr.ValueFromPipelineByPropertyName);
 
-    /// <summary>
-    /// Indicates whether or not the parameter takes its value from the pipeline input.
-    /// </summary>
+    /// Indicates whether the parameter takes its value from the pipeline input.
     public string GetIsPipelineAttribute(string parameterSetName) {
         var attributes = GetAttributes(parameterSetName).ToList();
         bool byValue = attributes.Any(attr => attr.ValueFromPipeline);
@@ -84,29 +62,23 @@ public abstract class Parameter {
                         : "false";
     }
 
-    /// <summary>
     /// The position of the parameter, or <em>null</em> if no position is defined.
-    /// </summary>
-    public string GetPosition(string parameterSetName) {
+    public string? GetPosition(string parameterSetName) {
         var attribute = GetAttributes(parameterSetName).FirstOrDefault();
         if (attribute == null) return null;
         return attribute.Position == int.MinValue ? "named" : Convert.ToString(attribute.Position);
     }
 
-    /// <summary>
     /// The default value of the parameter. This may be obtained by instantiating the cmdlet and accessing the parameter
     /// property or field to determine its initial value.
-    /// </summary>
-    public abstract object GetDefaultValue(ReportWarning reportWarning);
+    public abstract object? GetDefaultValue(Action<MemberInfo, string> reportWarning);
 
-    /// <summary>
     /// The list of enumerated value names. Returns an empty sequence if there are no enumerated values
     /// (normally because the parameter type is not an Enum type).
-    /// </summary>
     public IEnumerable<string> EnumValues {
         get {
             if (MemberType == MemberTypes.Property) {
-                Type enumType = null;
+                Type? enumType = null;
 
                 if (ParameterType.IsEnum)
                     enumType = ParameterType;
@@ -130,24 +102,14 @@ public abstract class Parameter {
                 }
             }
 
-            return Enumerable.Empty<string>();
+            return [];
         }
     }
 
-    /// <summary>
     /// The list of parameter aliases.
-    /// </summary>
-    public IEnumerable<string> Aliases {
-        get {
-            var aliasAttribute = (AliasAttribute) GetCustomAttributes<AliasAttribute>()
-                    .FirstOrDefault();
-            return aliasAttribute?.AliasNames ?? new List<string>();
-        }
-    }
+    public IEnumerable<string> Aliases => GetCustomAttributes<AliasAttribute>().FirstOrDefault()?.AliasNames ?? [];
 
-    /// <summary>
     /// Retrieves custom attributes defined on the parameter.
-    /// </summary>
     /// <typeparam name="T">The type of attribute to retrieve.</typeparam>
-    public abstract object[] GetCustomAttributes<T>() where T : Attribute;
+    public abstract IEnumerable<T> GetCustomAttributes<T>() where T : Attribute;
 }

@@ -1,61 +1,43 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Management.Automation;
 using System.Reflection;
 
 namespace XmlDoc2CmdletDoc.Core.Domain;
 
-/// <summary>
 /// Represents a single parameter of a cmdlet that is defined at runtime.
-/// </summary>
 public class RuntimeParameter : Parameter {
-    /// <summary>
-    /// The <see cref="RuntimeDefinedParameter"/> that defines the property.
-    /// </summary>
-    public readonly RuntimeDefinedParameter RuntimeDefinedParameter;
+    private readonly RuntimeDefinedParameter _runtimeDefinedParameter;
 
-    /// <summary>
     /// Creates a new instance.
-    /// </summary>
     /// <param name="cmdletType">The type of the cmdlet the parameter belongs to.</param>
     /// <param name="runtimeDefinedParameter">The dynamic runtime parameter member of the cmdlet.</param>
-    public RuntimeParameter(Type cmdletType, RuntimeDefinedParameter runtimeDefinedParameter) : base(cmdletType,
-            runtimeDefinedParameter?.Attributes.OfType<ParameterAttribute>()) {
-        RuntimeDefinedParameter =
-                runtimeDefinedParameter ?? throw new ArgumentNullException(nameof(runtimeDefinedParameter));
+    public RuntimeParameter(Type cmdletType, RuntimeDefinedParameter runtimeDefinedParameter)
+            : base(cmdletType, runtimeDefinedParameter.Attributes.OfType<ParameterAttribute>()) {
+        _runtimeDefinedParameter = runtimeDefinedParameter;
     }
 
-    /// <summary>
     /// The name of the parameter.
-    /// </summary>
-    public override string Name => RuntimeDefinedParameter.Name;
+    public override string Name => _runtimeDefinedParameter.Name;
 
-    /// <summary>
     /// The type of the parameter.
-    /// </summary>
-    public override Type ParameterType => RuntimeDefinedParameter.ParameterType;
+    public override Type ParameterType => _runtimeDefinedParameter.ParameterType;
 
-    /// <summary>
     /// The type of this parameter's member - method, constructor, property, and so on.
-    /// </summary>
     public override MemberTypes MemberType =>
             MemberTypes.Property; //RuntimeDefinedParameters are always defined as a Property
 
     /// <inheritdoc />
-    public override bool SupportsGlobbing => RuntimeDefinedParameter.Attributes.OfType<SupportsWildcardsAttribute>().Any();
+    public override bool SupportsGlobbing => _runtimeDefinedParameter.Attributes.OfType<SupportsWildcardsAttribute>().Any();
 
-    /// <summary>
     /// The default value of the parameter. Runtime parameters do not support specifying default values.
-    /// </summary>
-    public override object GetDefaultValue(ReportWarning reportWarning) {
-        //RuntimeDefinedParameter objects cannot have a default value.
+    public override object? GetDefaultValue(Action<MemberInfo, string> reportWarning) {
+        // RuntimeDefinedParameter cannot have a default value
         return null;
     }
 
-    /// <summary>
     /// Retrieves custom attributes defined on the parameter.
-    /// </summary>
     /// <typeparam name="T">The type of attribute to retrieve.</typeparam>
-    public override object[] GetCustomAttributes<T>() =>
-            RuntimeDefinedParameter.Attributes.OfType<T>().Cast<object>().ToArray();
+    public override IEnumerable<T> GetCustomAttributes<T>() => _runtimeDefinedParameter.Attributes.OfType<T>();
 }

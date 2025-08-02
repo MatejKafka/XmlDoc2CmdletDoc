@@ -4,6 +4,9 @@
         To pass custom arguments to XmlDoc2CmdletDoc, add them to the following property:
         <XmlDoc2CmdletDocArguments>...</XmlDoc2CmdletDocArguments>
         -->
+
+        <!-- when caller sets <TreatWarningsAsErrors> to true, enable strict mode -->
+        <XmlDoc2CmdletDocArguments Condition="'$(TreatWarningsAsErrors)' == 'true'">-strict $(XmlDoc2CmdletDocArguments)</XmlDoc2CmdletDocArguments>
     </PropertyGroup>
     <Target Name="XmlDoc2CmdletDoc" BeforeTargets="PostBuildEvent" Inputs="$(TargetPath)" Outputs="$(TargetPath)-Help.xml">
         <!-- use roll-forward so that this target works even on .NET 9 and later, without needing to ship a self-contained exe -->

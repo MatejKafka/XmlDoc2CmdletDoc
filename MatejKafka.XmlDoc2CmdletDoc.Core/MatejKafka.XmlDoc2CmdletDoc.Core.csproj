@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Nullable>enable</Nullable>
 
     <ProjectGuid>8f997709-e41a-4dc8-87a4-7fcc90279969</ProjectGuid>
     <AssemblyTitle>XmlDoc2CmdletDoc.Core</AssemblyTitle>

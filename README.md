@@ -39,8 +39,8 @@ Optionally, you can pass extra arguments by adding the following property to a `
 <XmlDoc2CmdletDocArguments>-strict -ignoreMissing -ignoreOptional -excludeParameterSets parameterSetToExclude1,parameterSetToExclude2</XmlDoc2CmdletDocArguments>
 ```
 
-- `-strict`: Fail the build if any cmdlet is missing a part of the documentation.
-- `-ignoreMissing`: Do not print a list of all cmdlets with missing docstrings.
+- `-strict`: Fail the build if any cmdlet is missing a part of the documentation. This is automatically enabled if `<TreatWarningsAsErrors>` is enabled.
+- `-ignoreMissing`: Do not warn when a cmdlet is missing a docstring.
 - `-ignoreOptional`: Do not warn on missing parameter descriptions. Warn on missing cmdlet synopses and type descriptions.
 - `-excludeParameterSets`: A comma-separated list of parameters sets to exclude from the documentation.
 

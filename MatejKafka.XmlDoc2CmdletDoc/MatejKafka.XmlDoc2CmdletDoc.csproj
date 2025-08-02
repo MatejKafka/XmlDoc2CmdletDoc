@@ -14,7 +14,7 @@
     <ProjectReference Include="..\MatejKafka.XmlDoc2CmdletDoc.Core\MatejKafka.XmlDoc2CmdletDoc.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Management.Automation" Version="7.4.5" />
+    <PackageReference Include="System.Management.Automation" Version="7.4.11" />
   </ItemGroup>
 
   <!-- Pack settings -->

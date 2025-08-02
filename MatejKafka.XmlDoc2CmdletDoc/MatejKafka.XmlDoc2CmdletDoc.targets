@@ -4,11 +4,9 @@
         To pass custom arguments to XmlDoc2CmdletDoc, add them to the following property:
         <XmlDoc2CmdletDocArguments>...</XmlDoc2CmdletDocArguments>
         -->
-
-        <XmlDocDllName Condition="'$(XmlDocDllName)' == ''">MatejKafka.XmlDoc2CmdletDoc.dll</XmlDocDllName>
     </PropertyGroup>
     <Target Name="XmlDoc2CmdletDoc" BeforeTargets="PostBuildEvent" Inputs="$(TargetPath)" Outputs="$(TargetPath)-Help.xml">
-        <Exec Condition="'$(XmlDoc2CmdletDocStrict)' != 'false'"
-              Command='dotnet "$(MSBuildThisFileDirectory)..\tools\$(XmlDocDllName)" $(XmlDoc2CmdletDocArguments) "$(TargetPath)"' />
+        <!-- use roll-forward so that this target works even on .NET 9 and later, without needing to ship a self-contained exe -->
+        <Exec Command='dotnet --roll-forward Major "$(MSBuildThisFileDirectory)..\tools\MatejKafka.XmlDoc2CmdletDoc.dll" $(XmlDoc2CmdletDocArguments) "$(TargetPath)"' />
     </Target>
 </Project>

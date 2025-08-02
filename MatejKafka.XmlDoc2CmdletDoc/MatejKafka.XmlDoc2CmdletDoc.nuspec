@@ -15,13 +15,13 @@
     <language>en-us</language>
     <copyright>
       Copyright © 2014-2020 Red Gate Software Ltd and other contributors,
-      Copyright © 2023-2024 Matej Kafka.
+      Copyright © 2023-2025 Matej Kafka.
     </copyright>
     <tags>PowerShell help xmldoc</tags>
     <developmentDependency>true</developmentDependency>
   </metadata>
   <files>
-    <file src="$PublishDir$\net8.0\**\*" exclude="**\*.pdb;**\*.xml" target="tools" />
+    <file src="$PublishDir$\net8.0\**\*" exclude="**.exe;**.pdb;**.xml" target="tools" />
     <file src="MatejKafka.XmlDoc2CmdletDoc.targets" target="build" />
     <file src="..\LICENSE.md" target="license" />
     <file src="..\README.md" target="docs" />

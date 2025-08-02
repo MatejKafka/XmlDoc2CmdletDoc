@@ -1,6 +1,6 @@
 License:  New BSD License
 Copyright (c) 2014-2020 Red Gate Software Ltd and other contributors,
-Copyright (c) 2023-2024 Matej Kafka.
+Copyright (c) 2023-2025 Matej Kafka.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

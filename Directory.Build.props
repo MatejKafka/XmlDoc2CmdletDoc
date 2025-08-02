@@ -5,11 +5,11 @@
     <NoWarn>CS1591</NoWarn>
   </PropertyGroup>
   <PropertyGroup>
-    <Version>0.6.0</Version>
+    <Version>0.6.1</Version>
     <Product>XmlDoc2CmdletDoc</Product>
     <Copyright>
       Copyright © 2014-2020 Red Gate Software Ltd and other contributors,
-      Copyright © 2023-2024 Matej Kafka.
+      Copyright © 2023-2025 Matej Kafka.
     </Copyright>
     <Company>Redgate, Matej Kafka</Company>
   </PropertyGroup>

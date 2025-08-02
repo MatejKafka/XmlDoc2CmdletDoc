@@ -34,16 +34,12 @@ public class ReflectionParameter : Parameter {
     /// </summary>
     public override Type ParameterType {
         get {
-            Type GetType(Type type) => Nullable.GetUnderlyingType(type) ?? type;
-
-            switch (MemberInfo.MemberType) {
-                case MemberTypes.Property:
-                    return GetType(((PropertyInfo) MemberInfo).PropertyType);
-                case MemberTypes.Field:
-                    return GetType(((FieldInfo) MemberInfo).FieldType);
-                default:
-                    throw new NotSupportedException("Unsupported type: " + MemberInfo);
-            }
+            return MemberType switch {
+                MemberTypes.Property => GetActualType(((PropertyInfo) MemberInfo).PropertyType),
+                MemberTypes.Field => GetActualType(((FieldInfo) MemberInfo).FieldType),
+                _ => throw new NotSupportedException("Unsupported type: " + MemberInfo)
+            };
+            Type GetActualType(Type type) => Nullable.GetUnderlyingType(type) ?? type;
         }
     }
 

@@ -151,7 +151,7 @@ public static class Engine {
     /// <returns>A sequence of commands, one for each cmdlet defined in the <paramref name="assembly"/>.</returns>
     private static IEnumerable<Command> GetCommands(Assembly assembly) {
         return assembly.ExportedTypes
-                .Where(static t => t is {IsAbstract: false, IsInterface: false, IsValueType: false})
+                .Where(t => t is {IsAbstract: false, IsInterface: false, IsValueType: false})
                 .Where(t => t.IsSubclassOf(typeof(Cmdlet)))
                 .Where(t => t.GetCustomAttributes<CmdletAttribute>(inherit: false).Any())
                 .Select(type => new Command(type))

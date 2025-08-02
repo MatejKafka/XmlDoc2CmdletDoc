@@ -19,6 +19,8 @@ internal sealed class AssemblyDependencyResolver : IDisposable {
     private readonly string _baseDir;
 
     public AssemblyDependencyResolver(string loadedAssemblyPath) {
+        // NOTE: we need AssemblyLoadContext, MetadataLoadContext is not enough, because the cmdlets are instantiated
+        //  to find default parameter values and dynamic parameters
         _loadContext = new AssemblyLoadContext(loadedAssemblyPath, true);
         _loadContext.Resolving += OnResolving;
         Assembly = _loadContext.LoadFromAssemblyPath(loadedAssemblyPath);

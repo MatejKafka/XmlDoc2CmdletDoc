@@ -26,9 +26,8 @@ Alternatively, paste the following snippet into your .csproj file:
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.6.1">
+    <PackageReference Include="MatejKafka.XmlDoc2CmdletDoc" Version="0.7.0">
       <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 ```
